@@ -369,7 +369,7 @@ export default function Dashboard() {
                   className="px-5 py-2.5 text-right font-data"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  {risk.riskScore}
+                  {risk.residualRiskScore}
                 </td>
 
                 <td
