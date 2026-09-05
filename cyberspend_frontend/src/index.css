@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+:root {
+  --bg-base: #0A0F1C;
+  --bg-surface: #10192B;
+  --bg-surface-raised: #16213A;
+  --border-hairline: #223049;
+  --border-hairline-soft: #1A2438;
+
+  --text-primary: #E8ECF4;
+  --text-secondary: #9AA6BC;
+  --text-tertiary: #5E6A82;
+
+  --risk-critical: #E5484D;
+  --risk-high: #F5A623;
+  --risk-medium: #E6C34D;
+  --risk-safe: #2DD4A8;
+  --accent-action: #5B8DEF;
+
+  --font-ui: 'Sora', system-ui, sans-serif;
+  --font-data: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-data {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--accent-action);
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

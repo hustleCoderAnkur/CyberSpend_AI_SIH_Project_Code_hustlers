@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.yarn-cache/
+
+# Build output
+dist/
+build/
+out/
+.vite/
+.cache/
+coverage/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+.nyc_output/
+playwright-report/
+test-results/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Local database / data files
+*.sqlite
+*.sqlite3
+*.db
+
+# Drizzle
+drizzle/meta/
+
+# Vercel
+.vercel/
+
+# Netlify
+.netlify/
+
+# Misc
+*.bak
+*.old
