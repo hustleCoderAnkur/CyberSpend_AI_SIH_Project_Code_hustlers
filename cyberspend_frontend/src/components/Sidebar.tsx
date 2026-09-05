@@ -11,11 +11,7 @@ import {
 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  {
-    to: '/',
-    label: '',
-    icon: LayoutGrid,
-  },
+
   {
     to: '/dashboard',
     label: 'Dashboard',
