@@ -20,7 +20,7 @@ export interface OptimizerResult {
 }
 
 export function optimizeInvestment(budget: number) {
-    return apiFetch<OptimizerResult>('/api/optimizer', {
+    return apiFetch<OptimizerResult>('/optimizer', {
         method: 'POST',
         body: JSON.stringify({
             budget,

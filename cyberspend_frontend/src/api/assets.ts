@@ -11,13 +11,13 @@ export interface Asset {
 }
 
 export function getAssets() {
-    return apiFetch<Asset[]>('/api/assets')
+    return apiFetch<Asset[]>('/assets')
 }
 
 export function createAsset(
     asset: Omit<Asset, 'createdAt'>,
 ) {
-    return apiFetch<Asset>('/api/assets', {
+    return apiFetch<Asset>('/assets', {
         method: 'POST',
         body: JSON.stringify(asset),
     })
@@ -27,7 +27,7 @@ export function updateAsset(
     id: string,
     asset: Partial<Omit<Asset, 'id' | 'createdAt'>>,
 ) {
-    return apiFetch<Asset>(`/api/assets/${id}`, {
+    return apiFetch<Asset>(`/assets/${id}`, {
         method: 'PUT',
         body: JSON.stringify(asset),
     })
@@ -35,7 +35,7 @@ export function updateAsset(
 
 export async function deleteAsset(id: string) {
     const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/assets/${id}`,
+        `${import.meta.env.VITE_API_URL}/assets/${id}`,
         {
             method: 'DELETE',
         },

@@ -12,7 +12,7 @@ export interface RiskSummary {
 }
 
 export function getRiskSummary() {
-    return apiFetch<RiskSummary>('/api/risk/summary')
+    return apiFetch<RiskSummary>('/risk/summary')
 }
 
 export function getRisks() {

@@ -40,7 +40,7 @@ export function updateVulnerability(
 
 export async function deleteVulnerability(id: string) {
     const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/vulnerabilities/${id}`,
+        `${import.meta.env.VITE_API_URL}/vulnerabilities/${id}`,
         {
             method: 'DELETE',
         },

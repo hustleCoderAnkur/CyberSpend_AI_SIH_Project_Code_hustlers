@@ -9,13 +9,13 @@ export interface Control {
 }
 
 export function getControls() {
-    return apiFetch<Control[]>('/api/controls')
+    return apiFetch<Control[]>('/controls')
 }
 
 export function createControl(
     control: Control,
 ) {
-    return apiFetch<Control>('/api/controls', {
+    return apiFetch<Control>('/controls', {
         method: 'POST',
         body: JSON.stringify(control),
     })
@@ -25,7 +25,7 @@ export function updateControl(
     id: string,
     control: Partial<Omit<Control, 'id'>>,
 ) {
-    return apiFetch<Control>(`/api/controls/${id}`, {
+    return apiFetch<Control>(`/controls/${id}`, {
         method: 'PUT',
         body: JSON.stringify(control),
     })
@@ -33,7 +33,7 @@ export function updateControl(
 
 export async function deleteControl(id: string) {
     const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/controls/${id}`,
+        `${import.meta.env.VITE_API_URL}/controls/${id}`,
         {
             method: 'DELETE',
         },

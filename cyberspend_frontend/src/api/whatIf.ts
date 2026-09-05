@@ -18,7 +18,7 @@ export interface WhatIfResult {
 }
 
 export function simulateWhatIf(controlIds: string[]) {
-    return apiFetch<WhatIfResult>('/api/what-if', {
+    return apiFetch<WhatIfResult>('/what-if', {
         method: 'POST',
         body: JSON.stringify({
             controlIds,
