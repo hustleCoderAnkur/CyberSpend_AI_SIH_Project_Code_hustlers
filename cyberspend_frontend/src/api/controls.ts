@@ -33,7 +33,7 @@ export function updateControl(
 
 export async function deleteControl(id: string) {
     const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/controls/${id}`,
+        `${import.meta.env.API_URL}/controls/${id}`,
         {
             method: 'DELETE',
         },
