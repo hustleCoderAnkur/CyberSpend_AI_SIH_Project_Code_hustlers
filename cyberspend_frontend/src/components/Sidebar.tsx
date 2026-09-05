@@ -13,6 +13,11 @@ import {
 const NAV_ITEMS = [
   {
     to: '/',
+    label: '',
+    icon: LayoutGrid,
+  },
+  {
+    to: '/dashboard',
     label: 'Dashboard',
     icon: LayoutGrid,
   },
