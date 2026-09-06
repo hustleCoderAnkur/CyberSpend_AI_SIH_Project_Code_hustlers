@@ -2,11 +2,15 @@ import {
     useMemo,
     useRef,
     useState,
+    type ChangeEvent,
+    type DragEvent,
+    type ReactNode,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     AlertCircle,
     ArrowRight,
+    Bug,
     Check,
     CheckCircle2,
     Database,
@@ -16,30 +20,26 @@ import {
     Server,
     ShieldCheck,
     Upload,
-    X,
-    Bug,
     UserRoundSearch,
+    X,
 } from 'lucide-react'
 
 import { apiFetch } from '../api/client'
-import { parseDataFile } from '../lib/dataParser'
 
-type DataType =
-    | 'assets'
-    | 'vulnerabilities'
-    | 'controls'
-    | 'insiderThreat'
+const IMPORT_STORAGE_KEY = 'cyberspend_import_completed'
+
+type DataType = 'assets' | 'vulnerabilities' | 'controls' | 'insiderThreat'
+
+type Criticality = 'Low' | 'Medium' | 'High' | 'Critical'
+
+type RawRow = Record<string, unknown>
 
 type NormalizedAsset = {
     id: string
     name: string
     category: string
     value: number
-    criticality:
-    | 'Low'
-    | 'Medium'
-    | 'High'
-    | 'Critical'
+    criticality: Criticality
     internetExposed: boolean
 }
 
@@ -93,13 +93,13 @@ type NormalizedRow =
     | NormalizedControl
     | NormalizedInsiderThreat
 
-interface UploadedFile {
+type UploadedFile = {
     file: File
     type: DataType
-    rows: Record<string, unknown>[]
+    rows: RawRow[]
 }
 
-interface ImportStats {
+type ImportStats = {
     assets: number
     vulnerabilities: number
     controls: number
@@ -114,95 +114,40 @@ type ProcessingStep =
     | 'risk'
     | 'done'
 
-interface BackendValidationError {
-    field: string
-    message: string
-    details?: unknown
-}
-
-interface BackendValidationResponse {
-    valid: boolean
-    totalRows: number
-    assets: number
-    vulnerabilities: number
-    controls: number
-    errors: BackendValidationError[]
-}
-
-interface InsiderThreatValidationResponse {
-    valid: boolean
-    totalRows: number
-    insiderThreatEvents: number
-    errors: BackendValidationError[]
-}
-
-const IMPORT_STORAGE_KEY =
-    'cyberspend_import_completed'
-
-const DATA_TYPES: {
+const DATA_TYPES: Array<{
     value: DataType
     label: string
     description: string
-}[] = [
+}> = [
         {
             value: 'assets',
             label: 'Asset Inventory',
-            description:
-                'Servers, databases, applications and endpoints',
+            description: 'Servers, databases, applications and endpoints',
         },
         {
             value: 'vulnerabilities',
             label: 'Vulnerability Data',
-            description:
-                'CVEs, scanner findings and security weaknesses',
+            description: 'CVEs, scanner findings and security weaknesses',
         },
         {
             value: 'controls',
             label: 'Security Controls',
-            description:
-                'MFA, EDR, WAF, patching and other controls',
+            description: 'MFA, EDR, WAF, patching and other controls',
         },
         {
             value: 'insiderThreat',
             label: 'Insider Threat Data',
-            description:
-                'Employee activity and malicious insider threat indicators',
+            description: 'Employee activity and malicious insider indicators',
         },
     ]
 
-const FIELD_ALIASES: Record<
-    DataType,
-    Record<string, string[]>
-> = {
+const FIELD_ALIASES: Record<DataType, Record<string, string[]>> = {
     assets: {
         id: ['id', 'asset_id', 'assetid'],
-        name: [
-            'name',
-            'asset_name',
-            'assetname',
-            'hostname',
-            'host',
-        ],
-        category: [
-            'category',
-            'type',
-            'asset_type',
-            'assettype',
-        ],
-        value: [
-            'value',
-            'asset_value',
-            'assetvalue',
-            'business_value',
-            'businessvalue',
-        ],
-        criticality: [
-            'criticality',
-            'criticality_level',
-            'risk_level',
-            'risklevel',
-            'severity',
-        ],
+        name: ['name', 'asset_name', 'assetname', 'hostname', 'host'],
+        category: ['category', 'type', 'asset_type', 'assettype'],
+        value: ['value', 'asset_value', 'assetvalue', 'business_value', 'businessvalue'],
+        criticality: ['criticality', 'criticality_level', 'risk_level', 'risklevel', 'severity'],
         internetExposed: [
             'internetexposed',
             'internet_exposed',
@@ -212,40 +157,12 @@ const FIELD_ALIASES: Record<
             'externallyexposed',
         ],
     },
-
     vulnerabilities: {
-        id: [
-            'id',
-            'vulnerability_id',
-            'vulnerabilityid',
-            'finding_id',
-        ],
-        assetId: [
-            'assetid',
-            'asset_id',
-            'affected_asset',
-            'affectedasset',
-        ],
-        name: [
-            'name',
-            'vulnerability',
-            'vulnerability_name',
-            'vulnerabilityname',
-            'finding',
-            'title',
-        ],
-        cvss: [
-            'cvss',
-            'cvss_score',
-            'cvssscore',
-            'cvss_v3',
-        ],
-        exploitAvailable: [
-            'exploitavailable',
-            'exploit_available',
-            'exploit',
-            'exploitability',
-        ],
+        id: ['id', 'vulnerability_id', 'vulnerabilityid', 'finding_id'],
+        assetId: ['assetid', 'asset_id', 'affected_asset', 'affectedasset'],
+        name: ['name', 'vulnerability', 'vulnerability_name', 'vulnerabilityname', 'finding', 'title'],
+        cvss: ['cvss', 'cvss_score', 'cvssscore', 'cvss_v3'],
+        exploitAvailable: ['exploitavailable', 'exploit_available', 'exploit', 'exploitability'],
         controlEffectiveness: [
             'controleffectiveness',
             'control_effectiveness',
@@ -262,24 +179,11 @@ const FIELD_ALIASES: Record<
             'datefound',
         ],
     },
-
     controls: {
         id: ['id', 'control_id', 'controlid'],
-        name: [
-            'name',
-            'control_name',
-            'controlname',
-        ],
-        category: [
-            'category',
-            'type',
-            'control_category',
-        ],
-        cost: [
-            'cost',
-            'control_cost',
-            'implementation_cost',
-        ],
+        name: ['name', 'control_name', 'controlname'],
+        category: ['category', 'type', 'control_category'],
+        cost: ['cost', 'control_cost', 'implementation_cost'],
         riskReductionPct: [
             'riskreductionpct',
             'risk_reduction_pct',
@@ -288,180 +192,85 @@ const FIELD_ALIASES: Record<
             'effectiveness',
         ],
     },
-
     insiderThreat: {
-        employeeDepartment: [
-            'employee_department',
-            'employee_department_name',
-            'department',
-        ],
-        employeeCampus: [
-            'employee_campus',
-            'campus',
-        ],
-        employeePosition: [
-            'employee_position',
-            'position',
-            'job_position',
-        ],
-        employeeSeniorityYears: [
-            'employee_seniority_years',
-            'seniority_years',
-            'seniority',
-        ],
-        isContractor: [
-            'is_contractor',
-            'contractor',
-        ],
-        employeeClassification: [
-            'employee_classification',
-            'classification',
-        ],
-        hasForeignCitizenship: [
-            'has_foreign_citizenship',
-            'foreign_citizenship',
-        ],
-        hasCriminalRecord: [
-            'has_criminal_record',
-            'criminal_record',
-        ],
-        hasMedicalHistory: [
-            'has_medical_history',
-            'medical_history',
-        ],
-        employeeOriginCountry: [
-            'employee_origin_country',
-            'origin_country',
-            'country',
-        ],
-        totalPrintedPages: [
-            'total_printed_pages',
-            'printed_pages',
-        ],
-        numPrintedPagesOffHours: [
-            'num_printed_pages_off_hours',
-            'printed_pages_off_hours',
-        ],
-        totalFilesBurned: [
-            'total_files_burned',
-            'files_burned',
-        ],
-        burnedFromOther: [
-            'burned_from_other',
-        ],
-        isAbroad: [
-            'is_abroad',
-            'abroad',
-        ],
-        tripDayNumber: [
-            'trip_day_number',
-            'trip_day',
-        ],
-        hostilityCountryLevel: [
-            'hostility_country_level',
-            'country_hostility_level',
-        ],
-        numEntries: [
-            'num_entries',
-            'entries',
-        ],
-        numUniqueCampus: [
-            'num_unique_campus',
-            'unique_campus',
-        ],
-        lateExitFlag: [
-            'late_exit_flag',
-            'late_exit',
-        ],
-        entryDuringWeekend: [
-            'entry_during_weekend',
-            'weekend_entry',
-        ],
-        isMalicious: [
-            'is_malicious',
-            'malicious',
-            'is_insider_threat',
-        ],
+        employeeDepartment: ['employee_department', 'employee_department_name', 'department'],
+        employeeCampus: ['employee_campus', 'campus'],
+        employeePosition: ['employee_position', 'position', 'job_position'],
+        employeeSeniorityYears: ['employee_seniority_years', 'seniority_years', 'seniority'],
+        isContractor: ['is_contractor', 'contractor'],
+        employeeClassification: ['employee_classification', 'classification'],
+        hasForeignCitizenship: ['has_foreign_citizenship', 'foreign_citizenship'],
+        hasCriminalRecord: ['has_criminal_record', 'criminal_record'],
+        hasMedicalHistory: ['has_medical_history', 'medical_history'],
+        employeeOriginCountry: ['employee_origin_country', 'origin_country', 'country'],
+        totalPrintedPages: ['total_printed_pages', 'printed_pages'],
+        numPrintedPagesOffHours: ['num_printed_pages_off_hours', 'printed_pages_off_hours'],
+        totalFilesBurned: ['total_files_burned', 'files_burned'],
+        burnedFromOther: ['burned_from_other'],
+        isAbroad: ['is_abroad', 'abroad'],
+        tripDayNumber: ['trip_day_number', 'trip_day'],
+        hostilityCountryLevel: ['hostility_country_level', 'country_hostility_level'],
+        numEntries: ['num_entries', 'entries'],
+        numUniqueCampus: ['num_unique_campus', 'unique_campus'],
+        lateExitFlag: ['late_exit_flag', 'late_exit'],
+        entryDuringWeekend: ['entry_during_weekend', 'weekend_entry'],
+        isMalicious: ['is_malicious', 'malicious', 'is_insider_threat'],
     },
 }
 
-function normalizeKey(value: string) {
-    return value
-        .trim()
-        .toLowerCase()
-        .replace(/[\s_-]+/g, '')
+const PROCESSING_STEPS: Array<{
+    id: ProcessingStep
+    label: string
+    description: string
+}> = [
+        {
+            id: 'reading',
+            label: 'Reading uploaded files',
+            description: 'Parsing CSV and JSON records',
+        },
+        {
+            id: 'normalizing',
+            label: 'Normalizing security data',
+            description: 'Mapping fields into the CyberSpend data model',
+        },
+        {
+            id: 'validating',
+            label: 'Validating records',
+            description: 'Checking fields and relationships locally',
+        },
+        {
+            id: 'saving',
+            label: 'Saving security data',
+            description: 'Writing validated data to the security database',
+        },
+        {
+            id: 'risk',
+            label: 'Calculating cyber risk',
+            description: 'Refreshing the financial risk model',
+        },
+    ]
+
+function normalizeKey(value: string): string {
+    return value.trim().toLowerCase().replace(/[\s_-]+/g, '')
 }
 
-function parseBoolean(value: unknown) {
-    if (typeof value === 'boolean') {
-        return value
+function getField(row: RawRow, type: DataType, field: string): unknown {
+    const aliases = FIELD_ALIASES[type][field] ?? []
+
+    for (const [key, value] of Object.entries(row)) {
+        const normalized = normalizeKey(key)
+
+        if (aliases.some((alias) => normalizeKey(alias) === normalized)) {
+            return value
+        }
     }
 
-    const normalized = String(value ?? '')
-        .trim()
-        .toLowerCase()
-
-    if (
-        ['true', 'yes', 'y', '1'].includes(
-            normalized,
-        )
-    ) {
-        return true
-    }
-
-    if (
-        ['false', 'no', 'n', '0'].includes(
-            normalized,
-        )
-    ) {
-        return false
-    }
-
-    return false
+    return undefined
 }
 
-function parseBinaryNumber(value: unknown) {
-    if (
-        typeof value === 'boolean'
-    ) {
-        return value ? 1 : 0
-    }
-
-    const normalized = String(value ?? '')
-        .trim()
-        .toLowerCase()
-
-    if (
-        ['true', 'yes', 'y', '1'].includes(
-            normalized,
-        )
-    ) {
-        return 1
-    }
-
-    if (
-        ['false', 'no', 'n', '0'].includes(
-            normalized,
-        )
-    ) {
-        return 0
-    }
-
-    const number = Number(normalized)
-
-    if (
-        Number.isFinite(number) &&
-        (number === 0 || number === 1)
-    ) {
-        return number
-    }
-
-    return NaN
-}
-
-function parseNumber(value: unknown) {
+function parseNumber(value: unknown): number {
     if (typeof value === 'number') {
-        return value
+        return Number.isFinite(value) ? value : NaN
     }
 
     const cleaned = String(value ?? '')
@@ -471,499 +280,313 @@ function parseNumber(value: unknown) {
         .trim()
 
     const number = Number(cleaned)
-
-    return Number.isFinite(number)
-        ? number
-        : NaN
+    return Number.isFinite(number) ? number : NaN
 }
 
-function parseInteger(value: unknown) {
+function parseInteger(value: unknown): number {
     const number = parseNumber(value)
-
-    if (
-        !Number.isFinite(number) ||
-        !Number.isInteger(number)
-    ) {
-        return NaN
-    }
-
-    return number
+    return Number.isInteger(number) ? number : NaN
 }
 
-function parseNullableNumber(value: unknown) {
-    if (
-        value === null ||
-        value === undefined ||
-        String(value).trim() === ''
-    ) {
+function parseNullableNumber(value: unknown): number | null {
+    if (value === null || value === undefined || String(value).trim() === '') {
         return null
     }
 
     const number = parseNumber(value)
-
-    return Number.isFinite(number)
-        ? number
-        : null
+    return Number.isFinite(number) ? number : null
 }
 
-function findField(
-    row: Record<string, unknown>,
-    type: DataType,
-    field: string,
-) {
-    const aliases =
-        FIELD_ALIASES[type][field] ?? []
+function parseBoolean(value: unknown): boolean {
+    if (typeof value === 'boolean') return value
 
-    const entries = Object.entries(row).map(
-        ([key, value]) => ({
-            key: normalizeKey(key),
-            value,
-        }),
-    )
+    const normalized = String(value ?? '').trim().toLowerCase()
 
-    const match = entries.find(
-        ({ key }) =>
-            aliases.some(
-                (alias) =>
-                    normalizeKey(alias) === key,
-            ),
-    )
+    if (['true', 'yes', 'y', '1'].includes(normalized)) return true
+    if (['false', 'no', 'n', '0', ''].includes(normalized)) return false
 
-    return match?.value
+    return false
 }
 
-function generateId(
-    prefix: string,
-    index: number,
-) {
+function parseBinary(value: unknown): number {
+    if (typeof value === 'boolean') return value ? 1 : 0
+
+    const normalized = String(value ?? '').trim().toLowerCase()
+
+    if (['true', 'yes', 'y', '1'].includes(normalized)) return 1
+    if (['false', 'no', 'n', '0', ''].includes(normalized)) return 0
+
+    const number = Number(normalized)
+    return number === 0 || number === 1 ? number : NaN
+}
+
+function generateId(prefix: string, index: number): string {
     return `${prefix}-${String(index + 1).padStart(6, '0')}`
 }
 
-function normalizeCriticality(
-    value: unknown,
-):
-    | 'Low'
-    | 'Medium'
-    | 'High'
-    | 'Critical'
-    | null {
-    const normalized = String(value ?? '')
-        .trim()
-        .toLowerCase()
+function normalizeCriticality(value: unknown): Criticality | null {
+    const normalized = String(value ?? '').trim().toLowerCase()
 
-    if (normalized === 'critical') {
-        return 'Critical'
-    }
-
-    if (normalized === 'high') {
-        return 'High'
-    }
-
-    if (normalized === 'medium') {
-        return 'Medium'
-    }
-
-    if (normalized === 'low') {
-        return 'Low'
-    }
+    if (normalized === 'critical') return 'Critical'
+    if (normalized === 'high') return 'High'
+    if (normalized === 'medium') return 'Medium'
+    if (normalized === 'low') return 'Low'
 
     return null
 }
 
-function normalizeDate(value: unknown) {
-    if (!value) {
+function normalizeDate(value: unknown): string {
+    if (!value || String(value).trim() === '') {
         return new Date().toISOString()
     }
 
     const date = new Date(String(value))
 
-    if (Number.isNaN(date.getTime())) {
-        return ''
-    }
-
-    return date.toISOString()
+    return Number.isNaN(date.getTime()) ? '' : date.toISOString()
 }
 
-function normalizeRows(
-    rows: Record<string, unknown>[],
-    type: DataType,
-): NormalizedRow[] {
+function normalizeRows(rows: RawRow[], type: DataType): NormalizedRow[] {
     if (type === 'assets') {
         return rows.map((row, index) => ({
-            id: String(
-                findField(row, type, 'id') ||
-                generateId('A', index),
-            ).trim(),
-
-            name: String(
-                findField(row, type, 'name') || '',
-            ).trim(),
-
-            category: String(
-                findField(row, type, 'category') ||
-                'Other',
-            ).trim(),
-
-            value: parseNumber(
-                findField(row, type, 'value'),
-            ),
-
-            criticality:
-                normalizeCriticality(
-                    findField(
-                        row,
-                        type,
-                        'criticality',
-                    ),
-                ) ?? 'Medium',
-
-            internetExposed: parseBoolean(
-                findField(
-                    row,
-                    type,
-                    'internetExposed',
-                ),
-            ),
+            id: String(getField(row, type, 'id') || generateId('A', index)).trim(),
+            name: String(getField(row, type, 'name') || '').trim(),
+            category: String(getField(row, type, 'category') || 'Other').trim(),
+            value: parseNumber(getField(row, type, 'value')),
+            criticality: normalizeCriticality(getField(row, type, 'criticality')) ?? 'Medium',
+            internetExposed: parseBoolean(getField(row, type, 'internetExposed')),
         }))
     }
 
     if (type === 'vulnerabilities') {
         return rows.map((row, index) => {
-            let controlEffectiveness =
-                parseNumber(
-                    findField(
-                        row,
-                        type,
-                        'controlEffectiveness',
-                    ),
-                )
+            let controlEffectiveness = parseNumber(
+                getField(row, type, 'controlEffectiveness'),
+            )
 
-            if (
-                Number.isNaN(
-                    controlEffectiveness,
-                )
-            ) {
+            if (Number.isNaN(controlEffectiveness)) {
                 controlEffectiveness = 0
-            }
-
-            if (controlEffectiveness > 1) {
+            } else if (controlEffectiveness > 1) {
                 controlEffectiveness /= 100
             }
 
             return {
-                id: String(
-                    findField(row, type, 'id') ||
-                    generateId('V', index),
-                ).trim(),
-
-                assetId: String(
-                    findField(
-                        row,
-                        type,
-                        'assetId',
-                    ) || '',
-                ).trim(),
-
-                name: String(
-                    findField(
-                        row,
-                        type,
-                        'name',
-                    ) || '',
-                ).trim(),
-
-                cvss: parseNumber(
-                    findField(
-                        row,
-                        type,
-                        'cvss',
-                    ),
-                ),
-
-                exploitAvailable:
-                    parseBoolean(
-                        findField(
-                            row,
-                            type,
-                            'exploitAvailable',
-                        ),
-                    ),
-
+                id: String(getField(row, type, 'id') || generateId('V', index)).trim(),
+                assetId: String(getField(row, type, 'assetId') || '').trim(),
+                name: String(getField(row, type, 'name') || '').trim(),
+                cvss: parseNumber(getField(row, type, 'cvss')),
+                exploitAvailable: parseBoolean(getField(row, type, 'exploitAvailable')),
                 controlEffectiveness,
-
-                discoveredOn: normalizeDate(
-                    findField(
-                        row,
-                        type,
-                        'discoveredOn',
-                    ),
-                ),
+                discoveredOn: normalizeDate(getField(row, type, 'discoveredOn')),
             }
         })
     }
 
     if (type === 'controls') {
         return rows.map((row, index) => {
-            let riskReductionPct =
-                parseNumber(
-                    findField(
-                        row,
-                        type,
-                        'riskReductionPct',
-                    ),
-                )
+            let riskReductionPct = parseNumber(getField(row, type, 'riskReductionPct'))
 
-            if (
-                Number.isNaN(riskReductionPct)
-            ) {
+            if (Number.isNaN(riskReductionPct)) {
                 riskReductionPct = 0
-            }
-
-            if (riskReductionPct > 1) {
+            } else if (riskReductionPct > 1) {
                 riskReductionPct /= 100
             }
 
             return {
-                id: String(
-                    findField(row, type, 'id') ||
-                    generateId('C', index),
-                ).trim(),
-
-                name: String(
-                    findField(
-                        row,
-                        type,
-                        'name',
-                    ) || '',
-                ).trim(),
-
-                category: String(
-                    findField(
-                        row,
-                        type,
-                        'category',
-                    ) || 'Other',
-                ).trim(),
-
-                cost: parseNumber(
-                    findField(
-                        row,
-                        type,
-                        'cost',
-                    ),
-                ),
-
+                id: String(getField(row, type, 'id') || generateId('C', index)).trim(),
+                name: String(getField(row, type, 'name') || '').trim(),
+                category: String(getField(row, type, 'category') || 'Other').trim(),
+                cost: parseNumber(getField(row, type, 'cost')),
                 riskReductionPct,
             }
         })
     }
 
     return rows.map((row, index) => ({
-        id: String(
-            generateId('INS', index),
+        id: generateId('INS', index),
+        employeeDepartment: String(getField(row, type, 'employeeDepartment') || '').trim(),
+        employeeCampus: String(getField(row, type, 'employeeCampus') || '').trim(),
+        employeePosition: String(getField(row, type, 'employeePosition') || '').trim(),
+        employeeSeniorityYears: parseInteger(
+            getField(row, type, 'employeeSeniorityYears'),
+        ),
+        isContractor: parseBinary(getField(row, type, 'isContractor')),
+        employeeClassification: parseInteger(
+            getField(row, type, 'employeeClassification'),
+        ),
+        hasForeignCitizenship: parseBinary(
+            getField(row, type, 'hasForeignCitizenship'),
+        ),
+        hasCriminalRecord: parseBinary(
+            getField(row, type, 'hasCriminalRecord'),
+        ),
+        hasMedicalHistory: parseBinary(
+            getField(row, type, 'hasMedicalHistory'),
+        ),
+        employeeOriginCountry: String(
+            getField(row, type, 'employeeOriginCountry') || '',
         ).trim(),
-
-        employeeDepartment: String(
-            findField(
-                row,
-                type,
-                'employeeDepartment',
-            ) || '',
-        ).trim(),
-
-        employeeCampus: String(
-            findField(
-                row,
-                type,
-                'employeeCampus',
-            ) || '',
-        ).trim(),
-
-        employeePosition: String(
-            findField(
-                row,
-                type,
-                'employeePosition',
-            ) || '',
-        ).trim(),
-
-        employeeSeniorityYears:
-            parseInteger(
-                findField(
-                    row,
-                    type,
-                    'employeeSeniorityYears',
-                ),
-            ),
-
-        isContractor:
-            parseBinaryNumber(
-                findField(
-                    row,
-                    type,
-                    'isContractor',
-                ),
-            ),
-
-        employeeClassification:
-            parseInteger(
-                findField(
-                    row,
-                    type,
-                    'employeeClassification',
-                ),
-            ),
-
-        hasForeignCitizenship:
-            parseBinaryNumber(
-                findField(
-                    row,
-                    type,
-                    'hasForeignCitizenship',
-                ),
-            ),
-
-        hasCriminalRecord:
-            parseBinaryNumber(
-                findField(
-                    row,
-                    type,
-                    'hasCriminalRecord',
-                ),
-            ),
-
-        hasMedicalHistory:
-            parseBinaryNumber(
-                findField(
-                    row,
-                    type,
-                    'hasMedicalHistory',
-                ),
-            ),
-
-        employeeOriginCountry:
-            String(
-                findField(
-                    row,
-                    type,
-                    'employeeOriginCountry',
-                ) || '',
-            ).trim(),
-
-        totalPrintedPages:
-            parseInteger(
-                findField(
-                    row,
-                    type,
-                    'totalPrintedPages',
-                ),
-            ),
-
-        numPrintedPagesOffHours:
-            parseInteger(
-                findField(
-                    row,
-                    type,
-                    'numPrintedPagesOffHours',
-                ),
-            ),
-
-        totalFilesBurned:
-            parseInteger(
-                findField(
-                    row,
-                    type,
-                    'totalFilesBurned',
-                ),
-            ),
-
-        burnedFromOther:
-            parseBinaryNumber(
-                findField(
-                    row,
-                    type,
-                    'burnedFromOther',
-                ),
-            ),
-
-        isAbroad:
-            parseBinaryNumber(
-                findField(
-                    row,
-                    type,
-                    'isAbroad',
-                ),
-            ),
-
-        tripDayNumber:
-            parseNullableNumber(
-                findField(
-                    row,
-                    type,
-                    'tripDayNumber',
-                ),
-            ),
-
-        hostilityCountryLevel:
-            parseInteger(
-                findField(
-                    row,
-                    type,
-                    'hostilityCountryLevel',
-                ),
-            ),
-
-        numEntries:
-            parseInteger(
-                findField(
-                    row,
-                    type,
-                    'numEntries',
-                ),
-            ),
-
-        numUniqueCampus:
-            parseInteger(
-                findField(
-                    row,
-                    type,
-                    'numUniqueCampus',
-                ),
-            ),
-
-        lateExitFlag:
-            parseBinaryNumber(
-                findField(
-                    row,
-                    type,
-                    'lateExitFlag',
-                ),
-            ),
-
-        entryDuringWeekend:
-            parseBinaryNumber(
-                findField(
-                    row,
-                    type,
-                    'entryDuringWeekend',
-                ),
-            ),
-
-        isMalicious:
-            parseBoolean(
-                findField(
-                    row,
-                    type,
-                    'isMalicious',
-                ),
-            ),
+        totalPrintedPages: parseInteger(
+            getField(row, type, 'totalPrintedPages'),
+        ),
+        numPrintedPagesOffHours: parseInteger(
+            getField(row, type, 'numPrintedPagesOffHours'),
+        ),
+        totalFilesBurned: parseInteger(
+            getField(row, type, 'totalFilesBurned'),
+        ),
+        burnedFromOther: parseBinary(getField(row, type, 'burnedFromOther')),
+        isAbroad: parseBinary(getField(row, type, 'isAbroad')),
+        tripDayNumber: parseNullableNumber(
+            getField(row, type, 'tripDayNumber'),
+        ),
+        hostilityCountryLevel: parseInteger(
+            getField(row, type, 'hostilityCountryLevel'),
+        ),
+        numEntries: parseInteger(getField(row, type, 'numEntries')),
+        numUniqueCampus: parseInteger(
+            getField(row, type, 'numUniqueCampus'),
+        ),
+        lateExitFlag: parseBinary(getField(row, type, 'lateExitFlag')),
+        entryDuringWeekend: parseBinary(
+            getField(row, type, 'entryDuringWeekend'),
+        ),
+        isMalicious: parseBoolean(getField(row, type, 'isMalicious')),
     }))
 }
 
-function validateRows(
-    rows: NormalizedRow[],
-    type: DataType,
-) {
+function detectDataType(rows: RawRow[]): DataType | null {
+    if (!rows.length) return null
+
+    const keys = new Set(Object.keys(rows[0]).map(normalizeKey))
+
+    const has = (type: DataType, field: string): boolean =>
+        (FIELD_ALIASES[type][field] ?? []).some((alias) =>
+            keys.has(normalizeKey(alias)),
+        )
+
+    if (
+        has('insiderThreat', 'employeeDepartment') &&
+        has('insiderThreat', 'employeePosition') &&
+        has('insiderThreat', 'isMalicious')
+    ) {
+        return 'insiderThreat'
+    }
+
+    if (has('vulnerabilities', 'assetId') && has('vulnerabilities', 'cvss')) {
+        return 'vulnerabilities'
+    }
+
+    if (has('controls', 'cost') && has('controls', 'riskReductionPct')) {
+        return 'controls'
+    }
+
+    if (has('assets', 'value') && has('assets', 'criticality')) {
+        return 'assets'
+    }
+
+    return null
+}
+
+function parseCsv(text: string): RawRow[] {
+    const rows: string[][] = []
+    let row: string[] = []
+    let cell = ''
+    let inQuotes = false
+
+    for (let index = 0; index < text.length; index += 1) {
+        const char = text[index]
+
+        if (char === '"') {
+            if (inQuotes && text[index + 1] === '"') {
+                cell += '"'
+                index += 1
+            } else {
+                inQuotes = !inQuotes
+            }
+            continue
+        }
+
+        if (char === ',' && !inQuotes) {
+            row.push(cell)
+            cell = ''
+            continue
+        }
+
+        if ((char === '\n' || char === '\r') && !inQuotes) {
+            if (char === '\r' && text[index + 1] === '\n') {
+                index += 1
+            }
+
+            row.push(cell)
+            cell = ''
+
+            if (row.some((value) => value.trim() !== '')) {
+                rows.push(row)
+            }
+
+            row = []
+            continue
+        }
+
+        cell += char
+    }
+
+    if (cell.length > 0 || row.length > 0) {
+        row.push(cell)
+
+        if (row.some((value) => value.trim() !== '')) {
+            rows.push(row)
+        }
+    }
+
+    if (rows.length < 2) return []
+
+    const headers = rows[0].map((header) => header.trim().replace(/^\uFEFF/, ''))
+
+    return rows.slice(1).map((values) => {
+        const result: RawRow = {}
+
+        headers.forEach((header, index) => {
+            result[header] = values[index] ?? ''
+        })
+
+        return result
+    })
+}
+
+async function parseDataFile(file: File): Promise<RawRow[]> {
+    const text = await file.text()
+    const isJson = file.name.toLowerCase().endsWith('.json')
+
+    if (isJson) {
+        const parsed: unknown = JSON.parse(text)
+
+        if (Array.isArray(parsed)) {
+            return parsed.filter(
+                (item): item is RawRow =>
+                    typeof item === 'object' && item !== null && !Array.isArray(item),
+            )
+        }
+
+        if (
+            typeof parsed === 'object' &&
+            parsed !== null &&
+            'data' in parsed &&
+            Array.isArray((parsed as { data: unknown }).data)
+        ) {
+            return (parsed as { data: unknown[] }).data.filter(
+                (item): item is RawRow =>
+                    typeof item === 'object' && item !== null && !Array.isArray(item),
+            )
+        }
+
+        throw new Error('JSON must contain an array of records or a data array.')
+    }
+
+    return parseCsv(text)
+}
+
+function validateRows(rows: NormalizedRow[], type: DataType): string[] {
     const errors: string[] = []
     const ids = new Set<string>()
 
@@ -971,13 +594,9 @@ function validateRows(
         const rowNumber = index + 2
 
         if (!row.id) {
-            errors.push(
-                `${type} row ${rowNumber}: ID is missing.`,
-            )
+            errors.push(`${type} row ${rowNumber}: ID is missing.`)
         } else if (ids.has(row.id)) {
-            errors.push(
-                `${type} row ${rowNumber}: duplicate ID "${row.id}".`,
-            )
+            errors.push(`${type} row ${rowNumber}: duplicate ID "${row.id}".`)
         } else {
             ids.add(row.id)
         }
@@ -985,26 +604,12 @@ function validateRows(
         if (type === 'assets') {
             const asset = row as NormalizedAsset
 
-            if (!asset.name.trim()) {
-                errors.push(`Asset row ${rowNumber}: name is missing.`)
-            }
-
-            if (!asset.category.trim()) {
+            if (!asset.name) errors.push(`Asset row ${rowNumber}: name is missing.`)
+            if (!asset.category) {
                 errors.push(`Asset row ${rowNumber}: category is missing.`)
             }
-
-            if (
-                !['Low', 'Medium', 'High', 'Critical'].includes(
-                    asset.criticality,
-                )
-            ) {
-                errors.push(`Asset row ${rowNumber}: invalid criticality.`)
-            }
-
             if (!Number.isFinite(asset.value) || asset.value <= 0) {
-                errors.push(
-                    `Asset row ${rowNumber}: asset value must be a positive number.`,
-                )
+                errors.push(`Asset row ${rowNumber}: value must be a positive number.`)
             }
         }
 
@@ -1012,12 +617,10 @@ function validateRows(
             const vulnerability = row as NormalizedVulnerability
 
             if (!vulnerability.assetId) {
-                errors.push(
-                    `Vulnerability row ${rowNumber}: assetId is missing.`,
-                )
+                errors.push(`Vulnerability row ${rowNumber}: assetId is missing.`)
             }
 
-            if (!vulnerability.name.trim()) {
+            if (!vulnerability.name) {
                 errors.push(`Vulnerability row ${rowNumber}: name is missing.`)
             }
 
@@ -1054,18 +657,13 @@ function validateRows(
         if (type === 'controls') {
             const control = row as NormalizedControl
 
-            if (!control.name.trim()) {
-                errors.push(`Control row ${rowNumber}: name is missing.`)
-            }
-
-            if (!control.category.trim()) {
+            if (!control.name) errors.push(`Control row ${rowNumber}: name is missing.`)
+            if (!control.category) {
                 errors.push(`Control row ${rowNumber}: category is missing.`)
             }
-
             if (!Number.isFinite(control.cost) || control.cost <= 0) {
                 errors.push(`Control row ${rowNumber}: cost must be positive.`)
             }
-
             if (
                 !Number.isFinite(control.riskReductionPct) ||
                 control.riskReductionPct < 0 ||
@@ -1085,19 +683,16 @@ function validateRows(
                     `Insider threat row ${rowNumber}: employee department is missing.`,
                 )
             }
-
             if (!insider.employeeCampus) {
                 errors.push(
                     `Insider threat row ${rowNumber}: employee campus is missing.`,
                 )
             }
-
             if (!insider.employeePosition) {
                 errors.push(
                     `Insider threat row ${rowNumber}: employee position is missing.`,
                 )
             }
-
             if (
                 !Number.isInteger(insider.employeeSeniorityYears) ||
                 insider.employeeSeniorityYears < 0
@@ -1174,48 +769,7 @@ function validateRows(
     return errors
 }
 
-function detectDataType(
-    rows: Record<string, unknown>[],
-): DataType | null {
-    if (!rows.length) {
-        return null
-    }
-
-    const keys = new Set(Object.keys(rows[0]!).map(normalizeKey))
-
-    const hasField = (type: DataType, field: string) =>
-        (FIELD_ALIASES[type][field] ?? []).some((alias) =>
-            keys.has(normalizeKey(alias)),
-        )
-
-    /*
-     * Insider Threat must be checked first because
-     * it has a distinctive employee/activity schema.
-     */
-    if (
-        hasField('insiderThreat', 'employeeDepartment') &&
-        hasField('insiderThreat', 'employeePosition') &&
-        hasField('insiderThreat', 'isMalicious')
-    ) {
-        return 'insiderThreat'
-    }
-
-    if (hasField('vulnerabilities', 'assetId') && hasField('vulnerabilities', 'cvss')) {
-        return 'vulnerabilities'
-    }
-
-    if (hasField('controls', 'cost') && hasField('controls', 'riskReductionPct')) {
-        return 'controls'
-    }
-
-    if (hasField('assets', 'value') && hasField('assets', 'criticality')) {
-        return 'assets'
-    }
-
-    return null
-}
-
-function buildImportPayload(uploadedFiles: UploadedFile[]) {
+function buildCompanyPayload(files: UploadedFile[]) {
     const payload: {
         assets: NormalizedAsset[]
         vulnerabilities: NormalizedVulnerability[]
@@ -1226,10 +780,8 @@ function buildImportPayload(uploadedFiles: UploadedFile[]) {
         controls: [],
     }
 
-    for (const item of uploadedFiles) {
-        if (item.type === 'insiderThreat') {
-            continue
-        }
+    files.forEach((item) => {
+        if (item.type === 'insiderThreat') return
 
         const rows = normalizeRows(item.rows, item.type)
 
@@ -1244,29 +796,26 @@ function buildImportPayload(uploadedFiles: UploadedFile[]) {
         if (item.type === 'controls') {
             payload.controls.push(...(rows as NormalizedControl[]))
         }
-    }
+    })
 
     return payload
 }
 
-function buildInsiderThreatPayload(uploadedFiles: UploadedFile[]) {
-    const payload: NormalizedInsiderThreat[] = []
+function buildInsiderPayload(files: UploadedFile[]): NormalizedInsiderThreat[] {
+    const result: NormalizedInsiderThreat[] = []
 
-    for (const item of uploadedFiles) {
-        if (item.type !== 'insiderThreat') {
-            continue
-        }
+    files.forEach((item) => {
+        if (item.type !== 'insiderThreat') return
 
-        const rows = normalizeRows(item.rows, item.type)
-        payload.push(...(rows as NormalizedInsiderThreat[]))
-    }
+        result.push(...(normalizeRows(item.rows, item.type) as NormalizedInsiderThreat[]))
+    })
 
-    return payload
+    return result
 }
 
 function validateRelationships(
-    payload: ReturnType<typeof buildImportPayload>,
-) {
+    payload: ReturnType<typeof buildCompanyPayload>,
+): string[] {
     const errors: string[] = []
 
     if (payload.vulnerabilities.length > 0 && payload.assets.length === 0) {
@@ -1277,9 +826,9 @@ function validateRelationships(
     const assetIds = new Set(payload.assets.map((asset) => asset.id))
 
     payload.vulnerabilities.forEach((vulnerability, index) => {
-        if (vulnerability.assetId && !assetIds.has(vulnerability.assetId)) {
+        if (!assetIds.has(vulnerability.assetId)) {
             errors.push(
-                `Vulnerability row ${index + 2}: assetId "${vulnerability.assetId}" does not match any uploaded asset.`,
+                `Vulnerability row ${index + 2}: assetId "${vulnerability.assetId}" does not match an uploaded asset.`,
             )
         }
     })
@@ -1287,9 +836,9 @@ function validateRelationships(
     return errors
 }
 
-function formatStepState(
+function stepState(
     step: ProcessingStep,
-    currentStep: ProcessingStep,
+    current: ProcessingStep,
 ): 'complete' | 'active' | 'pending' {
     const order: ProcessingStep[] = [
         'reading',
@@ -1300,62 +849,110 @@ function formatStepState(
         'done',
     ]
 
-    const currentIndex = order.indexOf(currentStep)
     const stepIndex = order.indexOf(step)
+    const currentIndex = order.indexOf(current)
 
-    if (stepIndex < currentIndex) {
-        return 'complete'
-    }
-
-    if (step === currentStep) {
-        return 'active'
-    }
-
+    if (stepIndex < currentIndex) return 'complete'
+    if (step === current) return 'active'
     return 'pending'
 }
 
-const PROCESSING_STEPS: {
-    id: ProcessingStep
-    label: string
-    description: string
-}[] = [
-        {
-            id: 'reading',
-            label: 'Reading uploaded files',
-            description: 'Parsing CSV and JSON records',
-        },
-        {
-            id: 'normalizing',
-            label: 'Normalizing security data',
-            description: 'Mapping fields into the CyberSpend data model',
-        },
-        {
-            id: 'validating',
-            label: 'Validating records',
-            description: 'Checking fields and relationships',
-        },
-        {
-            id: 'saving',
-            label: 'Saving security data',
-            description: 'Writing validated data to the security database',
-        },
-        {
-            id: 'risk',
-            label: 'Calculating cyber risk',
-            description: 'Refreshing the financial risk model',
-        },
-    ]
-
 function FileIcon({ fileName }: { fileName: string }) {
-    const isJson = fileName.toLowerCase().endsWith('.json')
-    return isJson ? <FileJson size={20} /> : <FileSpreadsheet size={20} />
+    return fileName.toLowerCase().endsWith('.json') ? (
+        <FileJson size={20} />
+    ) : (
+        <FileSpreadsheet size={20} />
+    )
 }
 
-function getDatasetIcon(type: DataType) {
+function DatasetIcon({ type }: { type: DataType }) {
     if (type === 'assets') return <Server size={18} />
     if (type === 'vulnerabilities') return <Bug size={18} />
     if (type === 'controls') return <ShieldCheck size={18} />
     return <UserRoundSearch size={18} />
+}
+
+function ProcessingIcon({
+    state,
+}: {
+    state: 'complete' | 'active' | 'pending'
+}) {
+    if (state === 'complete') {
+        return (
+            <div
+                className="flex h-6 w-6 items-center justify-center rounded-full"
+                style={{
+                    background: 'var(--status-success-bg)',
+                    color: 'var(--status-success-text)',
+                }}
+            >
+                <Check size={13} />
+            </div>
+        )
+    }
+
+    if (state === 'active') {
+        return (
+            <div
+                className="flex h-6 w-6 items-center justify-center rounded-full"
+                style={{
+                    background: 'var(--bg-surface-raised)',
+                    color: 'var(--text-primary)',
+                }}
+            >
+                <Loader2 size={14} className="animate-spin" />
+            </div>
+        )
+    }
+
+    return (
+        <div
+            className="h-6 w-6 rounded-full border"
+            style={{ borderColor: 'var(--border-hairline)' }}
+        />
+    )
+}
+
+function SummaryCard({
+    icon,
+    value,
+    label,
+}: {
+    icon: ReactNode
+    value: number
+    label: string
+}) {
+    return (
+        <div
+            className="rounded-xl border p-4 text-center"
+            style={{
+                borderColor: 'var(--border-hairline)',
+                background: 'var(--bg-surface)',
+            }}
+        >
+            <div
+                className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg"
+                style={{
+                    background: 'var(--bg-surface-raised)',
+                    color: 'var(--text-secondary)',
+                }}
+            >
+                {icon}
+            </div>
+            <p
+                className="mt-3 text-2xl font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+            >
+                {value}
+            </p>
+            <p
+                className="mt-1 text-xs"
+                style={{ color: 'var(--text-tertiary)' }}
+            >
+                {label}
+            </p>
+        </div>
+    )
 }
 
 export default function CompanyDataImport() {
@@ -1366,7 +963,8 @@ export default function CompanyDataImport() {
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
     const [processing, setProcessing] = useState(false)
     const [completed, setCompleted] = useState(false)
-    const [processingStep, setProcessingStep] = useState<ProcessingStep>('reading')
+    const [processingStep, setProcessingStep] =
+        useState<ProcessingStep>('reading')
     const [error, setError] = useState('')
     const [validationErrors, setValidationErrors] = useState<string[]>([])
     const [importStats, setImportStats] = useState<ImportStats>({
@@ -1376,50 +974,48 @@ export default function CompanyDataImport() {
         insiderThreatEvents: 0,
     })
 
-    const activeFile = uploadedFiles.find((item) => item.type === activeType)
+    const activeFile = uploadedFiles.find(
+        (item) => item.type === activeType,
+    )
 
-    const activeRows = useMemo(() => {
-        if (!activeFile) return []
-        return normalizeRows(activeFile.rows, activeFile.type)
-    }, [activeFile])
+    const activeRows = useMemo(
+        () => (activeFile ? normalizeRows(activeFile.rows, activeFile.type) : []),
+        [activeFile],
+    )
 
-    const activeValidationErrors = useMemo(() => {
-        if (!activeFile) return []
-        return validateRows(activeRows, activeFile.type)
-    }, [activeFile, activeRows])
-
-    const importPayload = useMemo(
-        () => buildImportPayload(uploadedFiles),
+    const companyPayload = useMemo(
+        () => buildCompanyPayload(uploadedFiles),
         [uploadedFiles],
     )
 
-    const insiderThreatPayload = useMemo(
-        () => buildInsiderThreatPayload(uploadedFiles),
+    const insiderPayload = useMemo(
+        () => buildInsiderPayload(uploadedFiles),
         [uploadedFiles],
     )
 
     const relationshipErrors = useMemo(
-        () => validateRelationships(importPayload),
-        [importPayload],
+        () => validateRelationships(companyPayload),
+        [companyPayload],
     )
-
-    const totalRecords =
-        importPayload.assets.length +
-        importPayload.vulnerabilities.length +
-        importPayload.controls.length +
-        insiderThreatPayload.length
 
     const allLocalErrors = useMemo(() => {
         const errors = uploadedFiles.flatMap((item) =>
             validateRows(normalizeRows(item.rows, item.type), item.type),
         )
+
         return [...errors, ...relationshipErrors]
     }, [uploadedFiles, relationshipErrors])
 
-    async function handleFile(file: File) {
-        const extension = file.name.toLowerCase()
+    const totalRecords =
+        companyPayload.assets.length +
+        companyPayload.vulnerabilities.length +
+        companyPayload.controls.length +
+        insiderPayload.length
 
-        if (!extension.endsWith('.csv') && !extension.endsWith('.json')) {
+    async function handleFile(file: File) {
+        const name = file.name.toLowerCase()
+
+        if (!name.endsWith('.csv') && !name.endsWith('.json')) {
             setError('Only CSV and JSON files are supported.')
             return
         }
@@ -1428,9 +1024,9 @@ export default function CompanyDataImport() {
             setError('')
             setValidationErrors([])
 
-            const rows = await parseDataFile(file, activeType)
+            const rows = await parseDataFile(file)
 
-            if (!rows.length) {
+            if (rows.length === 0) {
                 throw new Error('No data rows were found in this file.')
             }
 
@@ -1438,11 +1034,15 @@ export default function CompanyDataImport() {
 
             if (!detectedType) {
                 throw new Error(
-                    'Could not identify this dataset. Please use Asset, Vulnerability, Control or Insider Threat fields.',
+                    'Could not identify this dataset. Use Asset, Vulnerability, Control or Insider Threat fields.',
                 )
             }
 
-            const uploaded: UploadedFile = { file, type: detectedType, rows }
+            const uploaded: UploadedFile = {
+                file,
+                type: detectedType,
+                rows,
+            }
 
             setActiveType(detectedType)
             setUploadedFiles((current) => [
@@ -1451,86 +1051,51 @@ export default function CompanyDataImport() {
             ])
         } catch (err) {
             console.error('File import error:', err)
-            setError(err instanceof Error ? err.message : 'Could not read the file.')
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : 'Could not read the file.',
+            )
+        }
+    }
+
+    function handleFileInput(event: ChangeEvent<HTMLInputElement>) {
+        const file = event.target.files?.[0]
+
+        if (file) {
+            void handleFile(file)
+        }
+
+        event.target.value = ''
+    }
+
+    function handleDrop(event: DragEvent<HTMLDivElement>) {
+        event.preventDefault()
+
+        if (processing) return
+
+        const file = event.dataTransfer.files?.[0]
+
+        if (file) {
+            void handleFile(file)
         }
     }
 
     function removeFile(type: DataType) {
-        setUploadedFiles((current) => current.filter((item) => item.type !== type))
+        setUploadedFiles((current) =>
+            current.filter((item) => item.type !== type),
+        )
         setValidationErrors([])
         setError('')
     }
 
-    async function validateImportPayload() {
-        if (
-            importPayload.assets.length === 0 &&
-            importPayload.vulnerabilities.length === 0 &&
-            importPayload.controls.length === 0
-        ) {
-            return { valid: true, errors: [] as string[] }
-        }
-
-        try {
-            const response = await apiFetch<BackendValidationResponse>(
-                '/api/import/validate',
-                { method: 'POST', body: JSON.stringify(importPayload) },
-            )
-
-            if (!response.valid) {
-                return {
-                    valid: false,
-                    errors: response.errors.map((item) => `${item.field}: ${item.message}`),
-                }
-            }
-
-            return { valid: true, errors: [] as string[] }
-        } catch (err) {
-            return {
-                valid: false,
-                errors: [err instanceof Error ? err.message : 'Backend validation failed.'],
-            }
-        }
-    }
-
-    async function validateInsiderThreatPayload() {
-        if (insiderThreatPayload.length === 0) {
-            return { valid: true, errors: [] as string[] }
-        }
-
-        try {
-            const response = await apiFetch<InsiderThreatValidationResponse>(
-                '/api/import/insider-threat/validate',
-                { method: 'POST', body: JSON.stringify(insiderThreatPayload) },
-            )
-
-            if (!response.valid) {
-                return {
-                    valid: false,
-                    errors: response.errors.map((item) => `${item.field}: ${item.message}`),
-                }
-            }
-
-            return { valid: true, errors: [] as string[] }
-        } catch (err) {
-            return {
-                valid: false,
-                errors: [
-                    err instanceof Error
-                        ? err.message
-                        : 'Insider threat backend validation failed.',
-                ],
-            }
-        }
+    function openFilePicker() {
+        inputRef.current?.click()
     }
 
     async function importData() {
         if (uploadedFiles.length === 0) {
             setError('Upload at least one dataset before importing.')
-            return
-        }
-
-        if (importPayload.vulnerabilities.length > 0 && importPayload.assets.length === 0) {
-            setError('Upload the Asset Inventory before importing vulnerability data.')
             return
         }
 
@@ -1547,175 +1112,137 @@ export default function CompanyDataImport() {
         setCompleted(false)
         setError('')
         setValidationErrors([])
-        setProcessingStep('reading')
 
         try {
-            await new Promise((resolve) => setTimeout(resolve, 250))
+            setProcessingStep('reading')
+            await new Promise((resolve) => setTimeout(resolve, 150))
+
             setProcessingStep('normalizing')
+            const company = buildCompanyPayload(uploadedFiles)
+            const insider = buildInsiderPayload(uploadedFiles)
+            await new Promise((resolve) => setTimeout(resolve, 150))
 
-            const payload = buildImportPayload(uploadedFiles)
-            const insiderPayload = buildInsiderThreatPayload(uploadedFiles)
-
-            await new Promise((resolve) => setTimeout(resolve, 250))
             setProcessingStep('validating')
 
-            const [companyValidation, insiderValidation] = await Promise.all([
-                validateImportPayload(),
-                validateInsiderThreatPayload(),
-            ])
+            const relationshipIssues = validateRelationships(company)
 
-            const backendErrors = [...companyValidation.errors, ...insiderValidation.errors]
-
-            if (!companyValidation.valid || !insiderValidation.valid) {
-                setValidationErrors(backendErrors.slice(0, 20))
-                setError(
-                    `Please fix ${backendErrors.length} validation issue${backendErrors.length === 1 ? '' : 's'
-                    } before importing.`,
-                )
+            if (relationshipIssues.length > 0) {
+                setValidationErrors(relationshipIssues)
+                setError('The uploaded datasets have relationship errors.')
                 return
             }
 
+            await new Promise((resolve) => setTimeout(resolve, 150))
             setProcessingStep('saving')
 
-            let companyImported = { assets: 0, vulnerabilities: 0, controls: 0 }
-            let insiderThreatEvents = 0
+            let companyImported: ImportStats = {
+                assets: 0,
+                vulnerabilities: 0,
+                controls: 0,
+                insiderThreatEvents: 0,
+            }
 
             if (
-                payload.assets.length > 0 ||
-                payload.vulnerabilities.length > 0 ||
-                payload.controls.length > 0
+                company.assets.length > 0 ||
+                company.vulnerabilities.length > 0 ||
+                company.controls.length > 0
             ) {
                 const result = await apiFetch<{
                     success: boolean
                     message?: string
-                    imported: {
+                    error?: unknown
+                    imported?: {
                         assets: number
                         vulnerabilities: number
                         controls: number
                         total: number
                     }
-                }>('/api/import', { method: 'POST', body: JSON.stringify(payload) })
+                }>('/api/import', {
+                    method: 'POST',
+                    body: JSON.stringify(company),
+                })
 
                 if (!result.success) {
                     throw new Error(
-                        result.message || 'The backend could not complete the company data import.',
+                        result.message ||
+                        'The backend could not complete the company data import.',
                     )
                 }
 
-                companyImported = result.imported
+                companyImported = {
+                    ...companyImported,
+                    ...result.imported,
+                }
             }
 
-            if (insiderPayload.length > 0) {
-                const insiderResult = await apiFetch<{
+            if (insider.length > 0) {
+                const result = await apiFetch<{
                     success: boolean
                     message?: string
-                    imported: { insiderThreatEvents: number; total: number }
+                    error?: unknown
+                    imported?: {
+                        insiderThreatEvents: number
+                        total: number
+                    }
                 }>('/api/import/insider-threat', {
                     method: 'POST',
-                    body: JSON.stringify(insiderPayload),
+                    body: JSON.stringify(insider),
                 })
 
-                if (!insiderResult.success) {
+                if (!result.success) {
                     throw new Error(
-                        insiderResult.message ||
+                        result.message ||
                         'The backend could not complete the insider threat import.',
                     )
                 }
 
-                insiderThreatEvents = insiderResult.imported.insiderThreatEvents
+                companyImported.insiderThreatEvents =
+                    result.imported?.insiderThreatEvents ?? insider.length
             }
 
-            setImportStats({
-                assets: companyImported.assets,
-                vulnerabilities: companyImported.vulnerabilities,
-                controls: companyImported.controls,
-                insiderThreatEvents,
-            })
+            setImportStats(companyImported)
 
-            /*
-             * Refresh financial risk only when
-             * normal company security data exists.
-             */
             if (
-                payload.assets.length > 0 ||
-                payload.vulnerabilities.length > 0 ||
-                payload.controls.length > 0
+                company.assets.length > 0 ||
+                company.vulnerabilities.length > 0 ||
+                company.controls.length > 0
             ) {
                 setProcessingStep('risk')
-                await apiFetch('/api/risk')
+
+                try {
+                    await apiFetch('/api/risk')
+                } catch (riskError) {
+                    console.warn(
+                        'Risk refresh failed after import:',
+                        riskError,
+                    )
+                }
             }
 
             setProcessingStep('done')
-            await new Promise((resolve) => setTimeout(resolve, 400))
+            await new Promise((resolve) => setTimeout(resolve, 350))
 
             localStorage.setItem(IMPORT_STORAGE_KEY, 'true')
             setCompleted(true)
         } catch (err) {
             console.error('Import failed:', err)
-            setError(err instanceof Error ? err.message : 'Import failed. Please try again.')
+
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : 'Import failed. Please try again.',
+            )
         } finally {
             setProcessing(false)
         }
     }
 
-    function handleContinue() {
-        navigate('/dashboard')
-    }
-
-    function openFilePicker() {
-        inputRef.current?.click()
-    }
-
-    function handleDrop(event: React.DragEvent<HTMLDivElement>) {
-        event.preventDefault()
-        if (processing) return
-
-        const file = event.dataTransfer.files?.[0]
-        if (file) {
-            void handleFile(file)
-        }
-    }
-
-    function renderProcessingIcon(state: 'complete' | 'active' | 'pending') {
-        if (state === 'complete') {
-            return (
-                <div
-                    className="flex h-6 w-6 items-center justify-center rounded-full"
-                    style={{
-                        background: 'var(--status-success-bg)',
-                        color: 'var(--status-success-text)',
-                    }}
-                >
-                    <Check size={13} />
-                </div>
-            )
-        }
-
-        if (state === 'active') {
-            return (
-                <div
-                    className="flex h-6 w-6 items-center justify-center rounded-full"
-                    style={{
-                        background: 'var(--bg-surface-raised)',
-                        color: 'var(--text-primary)',
-                    }}
-                >
-                    <Loader2 size={14} className="animate-spin" />
-                </div>
-            )
-        }
-
-        return (
-            <div
-                className="h-6 w-6 rounded-full border"
-                style={{ borderColor: 'var(--border-hairline)' }}
-            />
-        )
-    }
-
     if (processing) {
         return (
-            <div className="min-h-screen px-5 py-10" style={{ background: 'var(--bg-base)' }}>
+            <div
+                className="min-h-screen px-5 py-10"
+                style={{ background: 'var(--bg-base)' }}
+            >
                 <div className="mx-auto flex min-h-[80vh] max-w-xl items-center">
                     <div className="w-full">
                         <div className="text-center">
@@ -1744,8 +1271,8 @@ export default function CompanyDataImport() {
                                 className="mx-auto mt-2 max-w-md text-sm"
                                 style={{ color: 'var(--text-secondary)' }}
                             >
-                                Validating your security data and preparing the CyberSpend risk
-                                environment.
+                                Validating your security data and preparing the CyberSpend
+                                risk environment.
                             </p>
                         </div>
 
@@ -1757,36 +1284,34 @@ export default function CompanyDataImport() {
                             }}
                         >
                             <div className="space-y-5">
-                                {PROCESSING_STEPS.map((step) => {
-                                    const state = formatStepState(step.id, processingStep)
+                                {PROCESSING_STEPS.map((step) => (
+                                    <div key={step.id} className="flex gap-3">
+                                        <ProcessingIcon
+                                            state={stepState(step.id, processingStep)}
+                                        />
 
-                                    return (
-                                        <div key={step.id} className="flex gap-3">
-                                            {renderProcessingIcon(state)}
+                                        <div>
+                                            <p
+                                                className="text-sm font-medium"
+                                                style={{
+                                                    color:
+                                                        stepState(step.id, processingStep) === 'pending'
+                                                            ? 'var(--text-tertiary)'
+                                                            : 'var(--text-primary)',
+                                                }}
+                                            >
+                                                {step.label}
+                                            </p>
 
-                                            <div>
-                                                <p
-                                                    className="text-sm font-medium"
-                                                    style={{
-                                                        color:
-                                                            state === 'pending'
-                                                                ? 'var(--text-tertiary)'
-                                                                : 'var(--text-primary)',
-                                                    }}
-                                                >
-                                                    {step.label}
-                                                </p>
-
-                                                <p
-                                                    className="mt-0.5 text-xs"
-                                                    style={{ color: 'var(--text-tertiary)' }}
-                                                >
-                                                    {step.description}
-                                                </p>
-                                            </div>
+                                            <p
+                                                className="mt-0.5 text-xs"
+                                                style={{ color: 'var(--text-tertiary)' }}
+                                            >
+                                                {step.description}
+                                            </p>
                                         </div>
-                                    )
-                                })}
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
@@ -1804,7 +1329,10 @@ export default function CompanyDataImport() {
 
     if (completed) {
         return (
-            <div className="min-h-screen px-5 py-10" style={{ background: 'var(--bg-base)' }}>
+            <div
+                className="min-h-screen px-5 py-10"
+                style={{ background: 'var(--bg-base)' }}
+            >
                 <div className="mx-auto flex min-h-[80vh] max-w-2xl items-center justify-center">
                     <div className="w-full text-center">
                         <div
@@ -1863,7 +1391,7 @@ export default function CompanyDataImport() {
 
                         <button
                             type="button"
-                            onClick={handleContinue}
+                            onClick={() => navigate('/dashboard')}
                             className="mt-8 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-85"
                             style={{
                                 background: 'var(--accent-action)',
@@ -1879,7 +1407,13 @@ export default function CompanyDataImport() {
         )
     }
 
-    const activeDataset = DATA_TYPES.find((item) => item.value === activeType)
+    const activeDataset = DATA_TYPES.find(
+        (item) => item.value === activeType,
+    )
+
+    const activeValidationErrors = activeFile
+        ? validateRows(activeRows, activeFile.type)
+        : []
 
     return (
         <div
@@ -1919,19 +1453,25 @@ export default function CompanyDataImport() {
                             className="mt-2 max-w-2xl text-sm"
                             style={{ color: 'var(--text-secondary)' }}
                         >
-                            Upload your organization's security datasets to unlock the CyberSpend
-                            risk analysis platform.
+                            Upload your organization&apos;s security datasets to unlock the
+                            CyberSpend risk analysis platform.
                         </p>
                     </div>
                 </header>
 
                 <section>
                     <div className="mb-3 flex items-center justify-between">
-                        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        <h2
+                            className="text-sm font-semibold"
+                            style={{ color: 'var(--text-primary)' }}
+                        >
                             Security datasets
                         </h2>
 
-                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                        <span
+                            className="text-xs"
+                            style={{ color: 'var(--text-tertiary)' }}
+                        >
                             {uploadedFiles.length} / 4 uploaded
                         </span>
                     </div>
@@ -1969,7 +1509,7 @@ export default function CompanyDataImport() {
                                                     color: 'var(--text-secondary)',
                                                 }}
                                             >
-                                                {getDatasetIcon(item.value)}
+                                                <DatasetIcon type={item.value} />
                                             </div>
 
                                             <div>
@@ -2015,11 +1555,17 @@ export default function CompanyDataImport() {
                     }}
                 >
                     <div className="mb-4">
-                        <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        <h2
+                            className="text-xl font-semibold"
+                            style={{ color: 'var(--text-primary)' }}
+                        >
                             {activeDataset?.label}
                         </h2>
 
-                        <p className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                        <p
+                            className="mt-1 text-sm"
+                            style={{ color: 'var(--text-tertiary)' }}
+                        >
                             CSV and JSON files are supported. Dataset type is detected
                             automatically from its fields.
                         </p>
@@ -2034,7 +1580,7 @@ export default function CompanyDataImport() {
                                 }}
                             >
                                 Insider Threat CSV files do not need an ID column. CyberSpend
-                                automatically generates stable record IDs during import.
+                                generates record IDs automatically.
                             </div>
                         )}
                     </div>
@@ -2069,14 +1615,30 @@ export default function CompanyDataImport() {
                                     {activeFile.file.name}
                                 </p>
 
-                                <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                                <p
+                                    className="mt-1 text-xs"
+                                    style={{ color: 'var(--text-tertiary)' }}
+                                >
                                     {activeRows.length} records detected
                                 </p>
+
+                                {activeValidationErrors.length > 0 && (
+                                    <p
+                                        className="mt-2 text-xs font-medium"
+                                        style={{ color: 'var(--status-danger-text)' }}
+                                    >
+                                        {activeValidationErrors.length} validation issue
+                                        {activeValidationErrors.length === 1 ? '' : 's'}
+                                    </p>
+                                )}
 
                                 <div className="mt-5 flex justify-center gap-2">
                                     <button
                                         type="button"
-                                        onClick={openFilePicker}
+                                        onClick={(event) => {
+                                            event.stopPropagation()
+                                            openFilePicker()
+                                        }}
                                         className="rounded-md border px-3 py-2 text-xs font-medium"
                                         style={{
                                             borderColor: 'var(--border-hairline)',
@@ -2089,7 +1651,10 @@ export default function CompanyDataImport() {
 
                                     <button
                                         type="button"
-                                        onClick={() => removeFile(activeType)}
+                                        onClick={(event) => {
+                                            event.stopPropagation()
+                                            removeFile(activeType)
+                                        }}
                                         className="rounded-md border px-3 py-2 text-xs font-medium"
                                         style={{
                                             borderColor: 'var(--border-hairline)',
@@ -2120,8 +1685,11 @@ export default function CompanyDataImport() {
                                     Drop your file here
                                 </p>
 
-                                <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                    or browse from your computer
+                                <p
+                                    className="mt-1 text-xs"
+                                    style={{ color: 'var(--text-tertiary)' }}
+                                >
+                                    or click to browse from your computer
                                 </p>
 
                                 <button
@@ -2130,13 +1698,14 @@ export default function CompanyDataImport() {
                                         event.stopPropagation()
                                         openFilePicker()
                                     }}
-                                    className="mt-5 rounded-md px-4 py-2 text-xs font-medium"
+                                    className="mt-5 rounded-md border px-4 py-2 text-xs font-medium"
                                     style={{
-                                        background: 'var(--accent-action)',
-                                        color: 'var(--text-inverse)',
+                                        borderColor: 'var(--border-hairline)',
+                                        background: 'var(--bg-surface)',
+                                        color: 'var(--text-primary)',
                                     }}
                                 >
-                                    Browse files
+                                    Choose file
                                 </button>
                             </>
                         )}
@@ -2145,73 +1714,43 @@ export default function CompanyDataImport() {
                     <input
                         ref={inputRef}
                         type="file"
-                        accept=".csv,.json"
+                        accept=".csv,.json,text/csv,application/json"
                         className="hidden"
-                        onChange={(event) => {
-                            const file = event.target.files?.[0]
-                            if (file) {
-                                void handleFile(file)
-                            }
-                            event.target.value = ''
-                        }}
+                        onChange={handleFileInput}
                     />
                 </section>
 
-                {activeFile && (
+                {activeFile && activeRows.length > 0 && (
                     <section
-                        className="mt-5 overflow-hidden rounded-xl border"
+                        className="mt-5 rounded-xl border"
                         style={{
                             borderColor: 'var(--border-hairline)',
                             background: 'var(--bg-surface)',
                         }}
                     >
-                        <div
-                            className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-                            style={{ borderColor: 'var(--border-hairline)' }}
-                        >
-                            <div>
-                                <h2
-                                    className="text-sm font-semibold"
-                                    style={{ color: 'var(--text-primary)' }}
-                                >
-                                    Data preview
-                                </h2>
-
-                                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                    Showing the first 5 normalized records.
-                                </p>
-                            </div>
-
-                            {activeValidationErrors.length === 0 ? (
-                                <span
-                                    className="inline-flex items-center gap-1.5 text-xs font-medium"
-                                    style={{ color: 'var(--status-success-text)' }}
-                                >
-                                    <CheckCircle2 size={14} />
-                                    Validation passed
-                                </span>
-                            ) : (
-                                <span
-                                    className="inline-flex items-center gap-1.5 text-xs font-medium"
-                                    style={{ color: 'var(--status-warning-text)' }}
-                                >
-                                    <AlertCircle size={14} />
-                                    Validation issues
-                                </span>
-                            )}
+                        <div className="border-b px-5 py-4" style={{ borderColor: 'var(--border-hairline-soft)' }}>
+                            <h2
+                                className="text-sm font-semibold"
+                                style={{ color: 'var(--text-primary)' }}
+                            >
+                                Data preview
+                            </h2>
+                            <p
+                                className="mt-0.5 text-xs"
+                                style={{ color: 'var(--text-tertiary)' }}
+                            >
+                                Showing the first 5 records.
+                            </p>
                         </div>
 
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-225 text-left">
+                            <table className="min-w-full text-left">
                                 <thead>
-                                    <tr
-                                        className="border-b"
-                                        style={{ borderColor: 'var(--border-hairline)' }}
-                                    >
-                                        {Object.keys(activeRows[0] ?? {}).map((key) => (
+                                    <tr className="border-b" style={{ borderColor: 'var(--border-hairline-soft)' }}>
+                                        {Object.keys(activeFile.rows[0]).map((key) => (
                                             <th
                                                 key={key}
-                                                className="px-4 py-3 text-[11px] font-medium"
+                                                className="whitespace-nowrap px-4 py-3 text-[11px] font-semibold"
                                                 style={{ color: 'var(--text-tertiary)' }}
                                             >
                                                 {key}
@@ -2221,19 +1760,19 @@ export default function CompanyDataImport() {
                                 </thead>
 
                                 <tbody>
-                                    {activeRows.slice(0, 5).map((row, index) => (
+                                    {activeFile.rows.slice(0, 5).map((row, index) => (
                                         <tr
                                             key={index}
                                             className="border-b last:border-b-0"
                                             style={{ borderColor: 'var(--border-hairline-soft)' }}
                                         >
-                                            {Object.entries(row).map(([key, value]) => (
+                                            {Object.keys(activeFile.rows[0]).map((key) => (
                                                 <td
                                                     key={key}
                                                     className="max-w-65 whitespace-nowrap px-4 py-3 text-xs"
                                                     style={{ color: 'var(--text-secondary)' }}
                                                 >
-                                                    {String(value ?? '')}
+                                                    {String(row[key] ?? '')}
                                                 </td>
                                             ))}
                                         </tr>
@@ -2301,7 +1840,10 @@ export default function CompanyDataImport() {
                                     Ready for import
                                 </h2>
 
-                                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                                <p
+                                    className="mt-0.5 text-xs"
+                                    style={{ color: 'var(--text-tertiary)' }}
+                                >
                                     Review the datasets before starting the analysis.
                                 </p>
                             </div>
@@ -2384,51 +1926,29 @@ export default function CompanyDataImport() {
                     <button
                         type="button"
                         onClick={() => void importData()}
-                        disabled={processing || uploadedFiles.length === 0 || allLocalErrors.length > 0}
+                        disabled={
+                            processing ||
+                            uploadedFiles.length === 0 ||
+                            allLocalErrors.length > 0
+                        }
                         className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-                        style={{ background: 'var(--accent-action)', color: 'var(--text-inverse)' }}
+                        style={{
+                            background: 'var(--accent-action)',
+                            color: 'var(--text-inverse)',
+                        }}
                     >
                         Import and analyze
                         <ArrowRight size={16} />
                     </button>
 
-                    <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                    <p
+                        className="text-[11px]"
+                        style={{ color: 'var(--text-tertiary)' }}
+                    >
                         Data is validated before the database import.
                     </p>
                 </div>
             </div>
-        </div>
-    )
-}
-
-function SummaryCard({
-    icon,
-    value,
-    label,
-}: {
-    icon: React.ReactNode
-    value: number
-    label: string
-}) {
-    return (
-        <div
-            className="rounded-xl border p-4"
-            style={{ borderColor: 'var(--border-hairline)', background: 'var(--bg-surface)' }}
-        >
-            <div
-                className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg"
-                style={{ background: 'var(--bg-surface-raised)', color: 'var(--text-secondary)' }}
-            >
-                {icon}
-            </div>
-
-            <p className="mt-3 text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {value}
-            </p>
-
-            <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                {label}
-            </p>
         </div>
     )
 }
