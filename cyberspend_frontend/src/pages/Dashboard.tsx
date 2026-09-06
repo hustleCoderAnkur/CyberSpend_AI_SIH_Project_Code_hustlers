@@ -269,7 +269,7 @@ export default function Dashboard() {
           'var(--bg-base)',
       }}
     >
-      <div className="mx-auto max-w-[1400px]">
+      <div className="mx-auto max-w-350">
         {/* Header */}
         <header className="mb-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -430,7 +430,7 @@ export default function Dashboard() {
                 </span>
               </div>
 
-              <div className="mt-4 h-[72px] w-full">
+              <div className="mt-4 h-18 w-full">
                 <ResponsiveContainer
                   width="100%"
                   height="100%"
@@ -700,7 +700,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left">
+              <table className="w-full min-w-190 text-left">
                 <thead>
                   <tr
                     className="border-b"
@@ -804,7 +804,7 @@ export default function Dashboard() {
                           </div>
                         </td>
 
-                        <td className="max-w-[300px] px-5 py-3.5">
+                        <td className="max-w-75 px-5 py-3.5">
                           <span
                             className="block truncate text-xs"
                             style={{

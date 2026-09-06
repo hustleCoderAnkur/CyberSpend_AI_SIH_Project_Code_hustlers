@@ -725,7 +725,7 @@ export default function Vulnerabilities() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[850px] text-left">
+                            <table className="w-full min-w-212.5 text-left">
                                 <thead
                                     className="border-b"
                                     style={{

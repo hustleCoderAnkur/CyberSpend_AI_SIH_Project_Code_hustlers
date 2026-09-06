@@ -2065,7 +2065,7 @@ export default function CompanyDataImport() {
                         </div>
 
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[650px] text-left">
+                            <table className="w-full min-w-162.5 text-left">
                                 <thead>
                                     <tr
                                         className="border-b"

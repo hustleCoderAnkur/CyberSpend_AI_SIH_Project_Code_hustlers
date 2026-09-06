@@ -633,7 +633,7 @@ export default function Controls() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[760px] text-left">
+                            <table className="w-full min-w-190 text-left">
                                 <thead
                                     className="border-b"
                                     style={{

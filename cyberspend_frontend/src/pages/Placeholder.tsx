@@ -36,7 +36,7 @@ export default function Placeholder({
 
         {/* Placeholder */}
         <section
-          className="mt-6 flex min-h-[280px] items-center justify-center rounded-lg border border-dashed"
+          className="mt-6 flex min-h-70 items-center justify-center rounded-lg border border-dashed"
           style={{
             borderColor:
               'var(--border-hairline)',

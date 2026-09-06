@@ -39,7 +39,7 @@ export function updateAsset(
 
 export async function deleteAsset(id: string) {
     const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/assets/${id}`,
+        `${import.meta.env.API_URL}/assets/${id}`,
         {
             method: 'DELETE',
         },

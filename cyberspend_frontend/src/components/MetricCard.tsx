@@ -13,7 +13,7 @@ export default function MetricCard({
 }: MetricCardProps) {
   return (
     <div
-      className="group flex min-h-[112px] flex-col justify-between rounded-lg border px-4 py-3.5 transition-colors duration-150"
+      className="group flex min-h-28 flex-col justify-between rounded-lg border px-4 py-3.5 transition-colors duration-150"
       style={{
         borderColor: 'var(--border-hairline)',
         background: 'var(--bg-surface)',

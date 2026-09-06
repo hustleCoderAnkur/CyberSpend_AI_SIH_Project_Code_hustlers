@@ -174,7 +174,7 @@ export default function Compliance() {
                                 onChange={(event) =>
                                     setFramework(event.target.value)
                                 }
-                                className="min-w-[240px] rounded-md border px-3 py-2.5 text-[13px] outline-none"
+                                className="min-w-60 rounded-md border px-3 py-2.5 text-[13px] outline-none"
                                 style={{
                                     borderColor:
                                         'var(--border-hairline)',
@@ -637,7 +637,7 @@ export default function Compliance() {
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[800px] text-left">
+                                    <table className="w-full min-w-200 text-left">
                                         <thead
                                             className="border-b"
                                             style={{

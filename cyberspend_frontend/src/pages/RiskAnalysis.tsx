@@ -597,7 +597,7 @@ export default function RiskAnalysis() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[900px] text-left">
+                            <table className="w-full min-w-225 text-left">
                                 <thead
                                     className="border-b"
                                     style={{
