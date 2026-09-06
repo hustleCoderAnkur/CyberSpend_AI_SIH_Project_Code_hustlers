@@ -13,11 +13,122 @@ export const importRouter = Router()
 
 /*
 |--------------------------------------------------------------------------
+| IMPORT DEBUG LOGGING
+|--------------------------------------------------------------------------
+|
+| Detailed logs are enabled for every major stage of this route.
+| Large payloads are summarized instead of dumping the whole dataset.
+|
+*/
+
+const IMPORT_LOG_PREFIX = '[CyberSpend Import]'
+
+function importLog(message: string, data?: unknown) {
+    const timestamp = new Date().toISOString()
+
+    if (data === undefined) {
+        console.log(`${IMPORT_LOG_PREFIX} ${timestamp} ${message}`)
+    } else {
+        console.log(
+            `${IMPORT_LOG_PREFIX} ${timestamp} ${message}`,
+            data,
+        )
+    }
+}
+
+function importError(message: string, error?: unknown) {
+    const timestamp = new Date().toISOString()
+
+    console.error(
+        `${IMPORT_LOG_PREFIX} ${timestamp} ${message}`,
+        error ?? '',
+    )
+}
+
+function logBodySummary(body: unknown) {
+    if (Array.isArray(body)) {
+        return {
+            type: 'array',
+            length: body.length,
+            firstRowKeys:
+                body.length > 0 &&
+                    body[0] &&
+                    typeof body[0] === 'object'
+                    ? Object.keys(
+                        body[0] as Record<string, unknown>,
+                    )
+                    : [],
+        }
+    }
+
+    if (body && typeof body === 'object') {
+        return {
+            type: 'object',
+            keys: Object.keys(
+                body as Record<string, unknown>,
+            ),
+        }
+    }
+
+    return {
+        type: typeof body,
+    }
+}
+
+function logCompanyPayload(payload: unknown) {
+    if (
+        !payload ||
+        typeof payload !== 'object' ||
+        Array.isArray(payload)
+    ) {
+        return logBodySummary(payload)
+    }
+
+    const value =
+        payload as Record<string, unknown>
+
+    return {
+        assets: Array.isArray(value.assets)
+            ? value.assets.length
+            : 'NOT_ARRAY',
+        vulnerabilities:
+            Array.isArray(value.vulnerabilities)
+                ? value.vulnerabilities.length
+                : 'NOT_ARRAY',
+        controls: Array.isArray(value.controls)
+            ? value.controls.length
+            : 'NOT_ARRAY',
+
+        firstAsset:
+            Array.isArray(value.assets) &&
+                value.assets.length > 0
+                ? value.assets[0]
+                : null,
+
+        firstVulnerability:
+            Array.isArray(value.vulnerabilities) &&
+                value.vulnerabilities.length > 0
+                ? value.vulnerabilities[0]
+                : null,
+
+        firstControl:
+            Array.isArray(value.controls) &&
+                value.controls.length > 0
+                ? value.controls[0]
+                : null,
+    }
+}
+
+importLog('import.ts module loaded')
+
+/*
+|--------------------------------------------------------------------------
 | Helpers
 |--------------------------------------------------------------------------
 */
 
 function toNumber(value: unknown): number {
+    // Per-row values are intentionally not logged.
     if (typeof value === 'number') {
         return Number.isFinite(value) ? value : 0
     }
@@ -103,6 +214,8 @@ function toNullableNumber(value: unknown): number | null {
 */
 
 function extractArrayPayload(body: unknown): Record<string, unknown>[] | null {
+    importLog('extractArrayPayload() called', logBodySummary(body))
+
     if (Array.isArray(body)) {
         return body as Record<string, unknown>[]
     }
@@ -144,6 +257,8 @@ function extractArrayPayload(body: unknown): Record<string, unknown>[] | null {
 }
 
 function extractCompanyPayload(body: unknown): unknown {
+    importLog('extractCompanyPayload() called', logBodySummary(body))
+
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
         return body
     }
@@ -265,6 +380,7 @@ function normalizeInsiderThreatRow(
     row: Record<string, unknown>,
     index: number,
 ) {
+    // Do not log every row; routes log counts and representative records.
     return {
         id:
             toText(row.id) ||
@@ -369,6 +485,10 @@ function normalizeInsiderThreatRow(
 function validateInsiderThreatRows(
     rows: Record<string, unknown>[],
 ) {
+    importLog('validateInsiderThreatRows() START', {
+        rows: rows.length,
+    })
+
     const errors: Array<{
         field: string
         message: string
@@ -423,6 +543,12 @@ function validateInsiderThreatRows(
         ids.add(row.id)
     })
 
+    importLog('validateInsiderThreatRows() END', {
+        rows: rows.length,
+        errors: errors.length,
+        firstErrors: errors.slice(0, 5),
+    })
+
     return errors
 }
 
@@ -435,11 +561,31 @@ function validateInsiderThreatRows(
 importRouter.post(
     '/validate',
     async (req, res) => {
+        const startedAt = Date.now()
+
+        importLog('================================================')
+        importLog('POST /api/import/validate START')
+        importLog('Request body', logBodySummary(req.body))
+
         try {
+            const payload =
+                extractCompanyPayload(req.body)
+
+            importLog(
+                'Company validation payload extracted',
+                logCompanyPayload(payload),
+            )
+
+            importLog('Running company Zod validation')
+
             const result =
-                importSchema.safeParse(extractCompanyPayload(req.body))
+                importSchema.safeParse(payload)
 
             if (!result.success) {
+                importError(
+                    '❌ COMPANY VALIDATION FAILED',
+                    result.error.issues,
+                )
                 const errors =
                     result.error.issues.map(
                         (issue) => ({
@@ -562,24 +708,69 @@ importRouter.post(
 importRouter.post(
     '/',
     async (req, res) => {
+        const startedAt = Date.now()
+
+        importLog('================================================')
+        importLog('POST /api/import START')
+        importLog('Request body', logBodySummary(req.body))
+
         try {
+            const payload =
+                extractCompanyPayload(req.body)
+
+            importLog(
+                'Company import payload extracted',
+                logCompanyPayload(payload),
+            )
+
+            importLog('Running company Zod validation')
+
             const result =
-                importSchema.safeParse(extractCompanyPayload(req.body))
+                importSchema.safeParse(payload)
 
             if (!result.success) {
+                importError(
+                    '❌ COMPANY IMPORT ZOD VALIDATION FAILED',
+                    result.error.issues,
+                )
+
                 return res.status(400).json({
                     success: false,
                     message: 'Company data validation failed.',
                     error: result.error.flatten(),
+                    details: result.error.issues.map(
+                        (issue) => ({
+                            path: issue.path,
+                            field: issue.path.join('.'),
+                            code: issue.code,
+                            message: issue.message,
+                            received: issue.input,
+                        }),
+                    ),
                 })
             }
 
             const data = result.data
 
+            importLog('✅ COMPANY ZOD VALIDATION PASSED', {
+                assets: data.assets.length,
+                vulnerabilities: data.vulnerabilities.length,
+                controls: data.controls.length,
+            })
+
             const assetIds = new Set(
                 data.assets.map(
                     (asset) => asset.id,
                 ),
+            )
+
+            importLog(
+                'Checking vulnerability -> asset relationships',
+                {
+                    assets: data.assets.length,
+                    vulnerabilities:
+                        data.vulnerabilities.length,
+                },
             )
 
             const missingAssetReferences =
@@ -594,6 +785,18 @@ importRouter.post(
                 missingAssetReferences.length >
                 0
             ) {
+                importError(
+                    '❌ MISSING ASSET REFERENCES',
+                    missingAssetReferences.map(
+                        (vulnerability) => ({
+                            vulnerabilityId:
+                                vulnerability.id,
+                            assetId:
+                                vulnerability.assetId,
+                        }),
+                    ),
+                )
+
                 return res.status(400).json({
                     success: false,
                     error:
@@ -610,12 +813,21 @@ importRouter.post(
                 })
             }
 
+            importLog(
+                'Starting company database transaction',
+            )
+
             await db.transaction(
                 async (tx) => {
                     if (
                         data.assets.length >
                         0
                     ) {
+                        importLog(
+                            `DB INSERT START: ${data.assets.length} assets`,
+                            data.assets[0],
+                        )
+
                         await tx
                             .insert(assets)
                             .values(
@@ -628,6 +840,11 @@ importRouter.post(
                         data.vulnerabilities
                             .length > 0
                     ) {
+                        importLog(
+                            `DB INSERT START: ${data.vulnerabilities.length} vulnerabilities`,
+                            data.vulnerabilities[0],
+                        )
+
                         await tx
                             .insert(
                                 vulnerabilities,
@@ -642,14 +859,27 @@ importRouter.post(
                         data.controls.length >
                         0
                     ) {
+                        importLog(
+                            `DB INSERT START: ${data.controls.length} controls`,
+                            data.controls[0],
+                        )
+
                         await tx
                             .insert(controls)
                             .values(
                                 data.controls,
                             )
                             .onConflictDoNothing()
+
+                        importLog(
+                            'DB INSERT COMPLETE: controls',
+                        )
                     }
                 },
+            )
+
+            importLog(
+                '✅ COMPANY DATABASE TRANSACTION COMPLETE',
             )
 
             return res.status(201).json({
@@ -677,16 +907,42 @@ importRouter.post(
                 },
             })
         } catch (error) {
-            console.error(
-                'Company data import failed:',
+            importError(
+                '❌ COMPANY IMPORT FAILED',
                 error,
             )
 
+            if (error instanceof Error) {
+                importError(
+                    'Company error message',
+                    error.message,
+                )
+
+                importError(
+                    'Company error stack',
+                    error.stack,
+                )
+            }
+
             return res.status(500).json({
                 success: false,
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to import company data.',
                 error:
-                    'Failed to import company data.',
+                    error instanceof Error
+                        ? error.message
+                        : String(error),
             })
+        } finally {
+            importLog(
+                'POST /api/import FINISHED',
+                {
+                    durationMs:
+                        Date.now() - startedAt,
+                },
+            )
         }
     },
 )
@@ -704,10 +960,33 @@ importRouter.post(
 importRouter.post(
     '/insider-threat/validate',
     async (req, res) => {
+        const startedAt = Date.now()
+
+        importLog('================================================')
+        importLog('POST /api/import/insider-threat/validate START')
+        importLog('Request body', logBodySummary(req.body))
+
         try {
-            const rawData = extractArrayPayload(req.body)
+            const rawData =
+                extractArrayPayload(req.body)
+
+            importLog(
+                'Insider validation payload extracted',
+                Array.isArray(rawData)
+                    ? {
+                        rows: rawData.length,
+                        firstRow:
+                            rawData[0] ?? null,
+                    }
+                    : {
+                        isArray: false,
+                    },
+            )
 
             if (!rawData) {
+                importError(
+                    '❌ INSIDER VALIDATION PAYLOAD IS NOT AN ARRAY',
+                )
                 return res.status(400).json({
                     valid: false,
                     totalRows: 0,
@@ -774,12 +1053,38 @@ importRouter.post(
 importRouter.post(
     '/insider-threat',
     async (req, res) => {
+        const startedAt = Date.now()
+
+        importLog('================================================')
+        importLog('POST /api/import/insider-threat START')
+        importLog('Request body', logBodySummary(req.body))
+
         try {
-            const rawData = extractArrayPayload(req.body)
+            const rawData =
+                extractArrayPayload(req.body)
+
+            importLog(
+                'Insider import payload extracted',
+                Array.isArray(rawData)
+                    ? {
+                        rows: rawData.length,
+                        firstRow:
+                            rawData[0] ?? null,
+                    }
+                    : {
+                        isArray: false,
+                    },
+            )
 
             if (!rawData) {
+                importError(
+                    '❌ INSIDER IMPORT PAYLOAD IS NOT AN ARRAY',
+                )
+
                 return res.status(400).json({
                     success: false,
+                    message:
+                        'Insider threat data must be an array.',
                     error:
                         'Insider threat data must be an array.',
                 })
@@ -799,6 +1104,13 @@ importRouter.post(
                 })
             }
 
+            importLog(
+                'Validating insider threat rows',
+                {
+                    rows: rawRows.length,
+                },
+            )
+
             const validationErrors =
                 validateInsiderThreatRows(
                     rawRows,
@@ -807,6 +1119,10 @@ importRouter.post(
             if (
                 validationErrors.length > 0
             ) {
+                importError(
+                    '❌ INSIDER VALIDATION FAILED',
+                    validationErrors.slice(0, 20),
+                )
                 return res.status(400).json({
                     success: false,
                     error:
@@ -828,15 +1144,32 @@ importRouter.post(
                         ),
                 )
 
+            importLog(
+                'Starting insider threat database transaction',
+            )
+
             await db.transaction(
                 async (tx) => {
+                    importLog(
+                        `DB INSERT START: ${rows.length} insider threat events`,
+                        rows[0] ?? null,
+                    )
+
                     await tx
                         .insert(
                             insiderThreatEvents,
                         )
                         .values(rows)
                         .onConflictDoNothing()
+
+                    importLog(
+                        'DB INSERT COMPLETE: insider threat events',
+                    )
                 },
+            )
+
+            importLog(
+                '✅ INSIDER DATABASE TRANSACTION COMPLETE',
             )
 
             return res.status(201).json({
@@ -853,16 +1186,42 @@ importRouter.post(
                 },
             })
         } catch (error) {
-            console.error(
-                'Insider threat import failed:',
+            importError(
+                '❌ INSIDER THREAT IMPORT FAILED',
                 error,
             )
 
+            if (error instanceof Error) {
+                importError(
+                    'Insider error message',
+                    error.message,
+                )
+
+                importError(
+                    'Insider error stack',
+                    error.stack,
+                )
+            }
+
             return res.status(500).json({
                 success: false,
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to import insider threat data.',
                 error:
-                    'Failed to import insider threat data.',
+                    error instanceof Error
+                        ? error.message
+                        : String(error),
             })
+        } finally {
+            importLog(
+                'POST /api/import/insider-threat FINISHED',
+                {
+                    durationMs:
+                        Date.now() - startedAt,
+                },
+            )
         }
     },
 )
