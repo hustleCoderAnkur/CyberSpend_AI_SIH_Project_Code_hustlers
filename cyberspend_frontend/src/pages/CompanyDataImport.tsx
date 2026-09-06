@@ -18,6 +18,7 @@ import {
     Upload,
     X,
     Bug,
+    UserRoundSearch,
 } from 'lucide-react'
 
 import { apiFetch } from '../api/client'
@@ -27,6 +28,7 @@ type DataType =
     | 'assets'
     | 'vulnerabilities'
     | 'controls'
+    | 'insiderThreat'
 
 type NormalizedAsset = {
     id: string
@@ -59,10 +61,37 @@ type NormalizedControl = {
     riskReductionPct: number
 }
 
+type NormalizedInsiderThreat = {
+    id: string
+    employeeDepartment: string
+    employeeCampus: string
+    employeePosition: string
+    employeeSeniorityYears: number
+    isContractor: number
+    employeeClassification: number
+    hasForeignCitizenship: number
+    hasCriminalRecord: number
+    hasMedicalHistory: number
+    employeeOriginCountry: string
+    totalPrintedPages: number
+    numPrintedPagesOffHours: number
+    totalFilesBurned: number
+    burnedFromOther: number
+    isAbroad: number
+    tripDayNumber: number | null
+    hostilityCountryLevel: number
+    numEntries: number
+    numUniqueCampus: number
+    lateExitFlag: number
+    entryDuringWeekend: number
+    isMalicious: boolean
+}
+
 type NormalizedRow =
     | NormalizedAsset
     | NormalizedVulnerability
     | NormalizedControl
+    | NormalizedInsiderThreat
 
 interface UploadedFile {
     file: File
@@ -74,6 +103,7 @@ interface ImportStats {
     assets: number
     vulnerabilities: number
     controls: number
+    insiderThreatEvents: number
 }
 
 type ProcessingStep =
@@ -96,6 +126,13 @@ interface BackendValidationResponse {
     assets: number
     vulnerabilities: number
     controls: number
+    errors: BackendValidationError[]
+}
+
+interface InsiderThreatValidationResponse {
+    valid: boolean
+    totalRows: number
+    insiderThreatEvents: number
     errors: BackendValidationError[]
 }
 
@@ -124,6 +161,12 @@ const DATA_TYPES: {
             label: 'Security Controls',
             description:
                 'MFA, EDR, WAF, patching and other controls',
+        },
+        {
+            value: 'insiderThreat',
+            label: 'Insider Threat Data',
+            description:
+                'Employee activity and malicious insider threat indicators',
         },
     ]
 
@@ -245,6 +288,101 @@ const FIELD_ALIASES: Record<
             'effectiveness',
         ],
     },
+
+    insiderThreat: {
+        employeeDepartment: [
+            'employee_department',
+            'employee_department_name',
+            'department',
+        ],
+        employeeCampus: [
+            'employee_campus',
+            'campus',
+        ],
+        employeePosition: [
+            'employee_position',
+            'position',
+            'job_position',
+        ],
+        employeeSeniorityYears: [
+            'employee_seniority_years',
+            'seniority_years',
+            'seniority',
+        ],
+        isContractor: [
+            'is_contractor',
+            'contractor',
+        ],
+        employeeClassification: [
+            'employee_classification',
+            'classification',
+        ],
+        hasForeignCitizenship: [
+            'has_foreign_citizenship',
+            'foreign_citizenship',
+        ],
+        hasCriminalRecord: [
+            'has_criminal_record',
+            'criminal_record',
+        ],
+        hasMedicalHistory: [
+            'has_medical_history',
+            'medical_history',
+        ],
+        employeeOriginCountry: [
+            'employee_origin_country',
+            'origin_country',
+            'country',
+        ],
+        totalPrintedPages: [
+            'total_printed_pages',
+            'printed_pages',
+        ],
+        numPrintedPagesOffHours: [
+            'num_printed_pages_off_hours',
+            'printed_pages_off_hours',
+        ],
+        totalFilesBurned: [
+            'total_files_burned',
+            'files_burned',
+        ],
+        burnedFromOther: [
+            'burned_from_other',
+        ],
+        isAbroad: [
+            'is_abroad',
+            'abroad',
+        ],
+        tripDayNumber: [
+            'trip_day_number',
+            'trip_day',
+        ],
+        hostilityCountryLevel: [
+            'hostility_country_level',
+            'country_hostility_level',
+        ],
+        numEntries: [
+            'num_entries',
+            'entries',
+        ],
+        numUniqueCampus: [
+            'num_unique_campus',
+            'unique_campus',
+        ],
+        lateExitFlag: [
+            'late_exit_flag',
+            'late_exit',
+        ],
+        entryDuringWeekend: [
+            'entry_during_weekend',
+            'weekend_entry',
+        ],
+        isMalicious: [
+            'is_malicious',
+            'malicious',
+            'is_insider_threat',
+        ],
+    },
 }
 
 function normalizeKey(value: string) {
@@ -282,6 +420,45 @@ function parseBoolean(value: unknown) {
     return false
 }
 
+function parseBinaryNumber(value: unknown) {
+    if (
+        typeof value === 'boolean'
+    ) {
+        return value ? 1 : 0
+    }
+
+    const normalized = String(value ?? '')
+        .trim()
+        .toLowerCase()
+
+    if (
+        ['true', 'yes', 'y', '1'].includes(
+            normalized,
+        )
+    ) {
+        return 1
+    }
+
+    if (
+        ['false', 'no', 'n', '0'].includes(
+            normalized,
+        )
+    ) {
+        return 0
+    }
+
+    const number = Number(normalized)
+
+    if (
+        Number.isFinite(number) &&
+        (number === 0 || number === 1)
+    ) {
+        return number
+    }
+
+    return NaN
+}
+
 function parseNumber(value: unknown) {
     if (typeof value === 'number') {
         return value
@@ -298,6 +475,35 @@ function parseNumber(value: unknown) {
     return Number.isFinite(number)
         ? number
         : NaN
+}
+
+function parseInteger(value: unknown) {
+    const number = parseNumber(value)
+
+    if (
+        !Number.isFinite(number) ||
+        !Number.isInteger(number)
+    ) {
+        return NaN
+    }
+
+    return number
+}
+
+function parseNullableNumber(value: unknown) {
+    if (
+        value === null ||
+        value === undefined ||
+        String(value).trim() === ''
+    ) {
+        return null
+    }
+
+    const number = parseNumber(value)
+
+    return Number.isFinite(number)
+        ? number
+        : null
 }
 
 function findField(
@@ -326,8 +532,11 @@ function findField(
     return match?.value
 }
 
-function generateId(prefix: string) {
-    return `${prefix}-${crypto.randomUUID().slice(0, 8)}`
+function generateId(
+    prefix: string,
+    index: number,
+) {
+    return `${prefix}-${String(index + 1).padStart(6, '0')}`
 }
 
 function normalizeCriticality(
@@ -380,10 +589,10 @@ function normalizeRows(
     type: DataType,
 ): NormalizedRow[] {
     if (type === 'assets') {
-        return rows.map((row) => ({
+        return rows.map((row, index) => ({
             id: String(
                 findField(row, type, 'id') ||
-                generateId('A'),
+                generateId('A', index),
             ).trim(),
 
             name: String(
@@ -419,7 +628,7 @@ function normalizeRows(
     }
 
     if (type === 'vulnerabilities') {
-        return rows.map((row) => {
+        return rows.map((row, index) => {
             let controlEffectiveness =
                 parseNumber(
                     findField(
@@ -444,7 +653,7 @@ function normalizeRows(
             return {
                 id: String(
                     findField(row, type, 'id') ||
-                    generateId('V'),
+                    generateId('V', index),
                 ).trim(),
 
                 assetId: String(
@@ -493,52 +702,262 @@ function normalizeRows(
         })
     }
 
-    return rows.map((row) => {
-        let riskReductionPct =
-            parseNumber(
-                findField(
-                    row,
-                    type,
-                    'riskReductionPct',
+    if (type === 'controls') {
+        return rows.map((row, index) => {
+            let riskReductionPct =
+                parseNumber(
+                    findField(
+                        row,
+                        type,
+                        'riskReductionPct',
+                    ),
+                )
+
+            if (
+                Number.isNaN(riskReductionPct)
+            ) {
+                riskReductionPct = 0
+            }
+
+            if (riskReductionPct > 1) {
+                riskReductionPct /= 100
+            }
+
+            return {
+                id: String(
+                    findField(row, type, 'id') ||
+                    generateId('C', index),
+                ).trim(),
+
+                name: String(
+                    findField(
+                        row,
+                        type,
+                        'name',
+                    ) || '',
+                ).trim(),
+
+                category: String(
+                    findField(
+                        row,
+                        type,
+                        'category',
+                    ) || 'Other',
+                ).trim(),
+
+                cost: parseNumber(
+                    findField(
+                        row,
+                        type,
+                        'cost',
+                    ),
                 ),
-            )
 
-        if (
-            Number.isNaN(riskReductionPct)
-        ) {
-            riskReductionPct = 0
-        }
+                riskReductionPct,
+            }
+        })
+    }
 
-        if (riskReductionPct > 1) {
-            riskReductionPct /= 100
-        }
+    return rows.map((row, index) => ({
+        id: String(
+            generateId('INS', index),
+        ).trim(),
 
-        return {
-            id: String(
-                findField(row, type, 'id') ||
-                generateId('C'),
-            ).trim(),
+        employeeDepartment: String(
+            findField(
+                row,
+                type,
+                'employeeDepartment',
+            ) || '',
+        ).trim(),
 
-            name: String(
-                findField(row, type, 'name') || '',
-            ).trim(),
+        employeeCampus: String(
+            findField(
+                row,
+                type,
+                'employeeCampus',
+            ) || '',
+        ).trim(),
 
-            category: String(
-                findField(row, type, 'category') ||
-                'Other',
-            ).trim(),
+        employeePosition: String(
+            findField(
+                row,
+                type,
+                'employeePosition',
+            ) || '',
+        ).trim(),
 
-            cost: parseNumber(
+        employeeSeniorityYears:
+            parseInteger(
                 findField(
                     row,
                     type,
-                    'cost',
+                    'employeeSeniorityYears',
                 ),
             ),
 
-            riskReductionPct,
-        }
-    })
+        isContractor:
+            parseBinaryNumber(
+                findField(
+                    row,
+                    type,
+                    'isContractor',
+                ),
+            ),
+
+        employeeClassification:
+            parseInteger(
+                findField(
+                    row,
+                    type,
+                    'employeeClassification',
+                ),
+            ),
+
+        hasForeignCitizenship:
+            parseBinaryNumber(
+                findField(
+                    row,
+                    type,
+                    'hasForeignCitizenship',
+                ),
+            ),
+
+        hasCriminalRecord:
+            parseBinaryNumber(
+                findField(
+                    row,
+                    type,
+                    'hasCriminalRecord',
+                ),
+            ),
+
+        hasMedicalHistory:
+            parseBinaryNumber(
+                findField(
+                    row,
+                    type,
+                    'hasMedicalHistory',
+                ),
+            ),
+
+        employeeOriginCountry:
+            String(
+                findField(
+                    row,
+                    type,
+                    'employeeOriginCountry',
+                ) || '',
+            ).trim(),
+
+        totalPrintedPages:
+            parseInteger(
+                findField(
+                    row,
+                    type,
+                    'totalPrintedPages',
+                ),
+            ),
+
+        numPrintedPagesOffHours:
+            parseInteger(
+                findField(
+                    row,
+                    type,
+                    'numPrintedPagesOffHours',
+                ),
+            ),
+
+        totalFilesBurned:
+            parseInteger(
+                findField(
+                    row,
+                    type,
+                    'totalFilesBurned',
+                ),
+            ),
+
+        burnedFromOther:
+            parseBinaryNumber(
+                findField(
+                    row,
+                    type,
+                    'burnedFromOther',
+                ),
+            ),
+
+        isAbroad:
+            parseBinaryNumber(
+                findField(
+                    row,
+                    type,
+                    'isAbroad',
+                ),
+            ),
+
+        tripDayNumber:
+            parseNullableNumber(
+                findField(
+                    row,
+                    type,
+                    'tripDayNumber',
+                ),
+            ),
+
+        hostilityCountryLevel:
+            parseInteger(
+                findField(
+                    row,
+                    type,
+                    'hostilityCountryLevel',
+                ),
+            ),
+
+        numEntries:
+            parseInteger(
+                findField(
+                    row,
+                    type,
+                    'numEntries',
+                ),
+            ),
+
+        numUniqueCampus:
+            parseInteger(
+                findField(
+                    row,
+                    type,
+                    'numUniqueCampus',
+                ),
+            ),
+
+        lateExitFlag:
+            parseBinaryNumber(
+                findField(
+                    row,
+                    type,
+                    'lateExitFlag',
+                ),
+            ),
+
+        entryDuringWeekend:
+            parseBinaryNumber(
+                findField(
+                    row,
+                    type,
+                    'entryDuringWeekend',
+                ),
+            ),
+
+        isMalicious:
+            parseBoolean(
+                findField(
+                    row,
+                    type,
+                    'isMalicious',
+                ),
+            ),
+    }))
 }
 
 function validateRows(
@@ -567,34 +986,22 @@ function validateRows(
             const asset = row as NormalizedAsset
 
             if (!asset.name.trim()) {
-                errors.push(
-                    `Asset row ${rowNumber}: name is missing.`,
-                )
+                errors.push(`Asset row ${rowNumber}: name is missing.`)
             }
 
             if (!asset.category.trim()) {
-                errors.push(
-                    `Asset row ${rowNumber}: category is missing.`,
-                )
+                errors.push(`Asset row ${rowNumber}: category is missing.`)
             }
 
             if (
-                ![
-                    'Low',
-                    'Medium',
-                    'High',
-                    'Critical',
-                ].includes(asset.criticality)
-            ) {
-                errors.push(
-                    `Asset row ${rowNumber}: invalid criticality.`,
+                !['Low', 'Medium', 'High', 'Critical'].includes(
+                    asset.criticality,
                 )
+            ) {
+                errors.push(`Asset row ${rowNumber}: invalid criticality.`)
             }
 
-            if (
-                !Number.isFinite(asset.value) ||
-                asset.value <= 0
-            ) {
+            if (!Number.isFinite(asset.value) || asset.value <= 0) {
                 errors.push(
                     `Asset row ${rowNumber}: asset value must be a positive number.`,
                 )
@@ -602,8 +1009,7 @@ function validateRows(
         }
 
         if (type === 'vulnerabilities') {
-            const vulnerability =
-                row as NormalizedVulnerability
+            const vulnerability = row as NormalizedVulnerability
 
             if (!vulnerability.assetId) {
                 errors.push(
@@ -612,15 +1018,11 @@ function validateRows(
             }
 
             if (!vulnerability.name.trim()) {
-                errors.push(
-                    `Vulnerability row ${rowNumber}: name is missing.`,
-                )
+                errors.push(`Vulnerability row ${rowNumber}: name is missing.`)
             }
 
             if (
-                !Number.isFinite(
-                    vulnerability.cvss,
-                ) ||
+                !Number.isFinite(vulnerability.cvss) ||
                 vulnerability.cvss < 0 ||
                 vulnerability.cvss > 10
             ) {
@@ -630,10 +1032,9 @@ function validateRows(
             }
 
             if (
-                vulnerability.controlEffectiveness <
-                0 ||
-                vulnerability.controlEffectiveness >
-                1
+                !Number.isFinite(vulnerability.controlEffectiveness) ||
+                vulnerability.controlEffectiveness < 0 ||
+                vulnerability.controlEffectiveness > 1
             ) {
                 errors.push(
                     `Vulnerability row ${rowNumber}: control effectiveness must be between 0 and 100%.`,
@@ -642,11 +1043,7 @@ function validateRows(
 
             if (
                 !vulnerability.discoveredOn ||
-                Number.isNaN(
-                    new Date(
-                        vulnerability.discoveredOn,
-                    ).getTime(),
-                )
+                Number.isNaN(new Date(vulnerability.discoveredOn).getTime())
             ) {
                 errors.push(
                     `Vulnerability row ${rowNumber}: discoveredOn must be a valid date.`,
@@ -655,36 +1052,120 @@ function validateRows(
         }
 
         if (type === 'controls') {
-            const control =
-                row as NormalizedControl
+            const control = row as NormalizedControl
 
             if (!control.name.trim()) {
-                errors.push(
-                    `Control row ${rowNumber}: name is missing.`,
-                )
+                errors.push(`Control row ${rowNumber}: name is missing.`)
             }
 
             if (!control.category.trim()) {
-                errors.push(
-                    `Control row ${rowNumber}: category is missing.`,
-                )
+                errors.push(`Control row ${rowNumber}: category is missing.`)
+            }
+
+            if (!Number.isFinite(control.cost) || control.cost <= 0) {
+                errors.push(`Control row ${rowNumber}: cost must be positive.`)
             }
 
             if (
-                !Number.isFinite(control.cost) ||
-                control.cost <= 0
-            ) {
-                errors.push(
-                    `Control row ${rowNumber}: cost must be positive.`,
-                )
-            }
-
-            if (
+                !Number.isFinite(control.riskReductionPct) ||
                 control.riskReductionPct < 0 ||
                 control.riskReductionPct > 1
             ) {
                 errors.push(
                     `Control row ${rowNumber}: risk reduction must be between 0 and 100%.`,
+                )
+            }
+        }
+
+        if (type === 'insiderThreat') {
+            const insider = row as NormalizedInsiderThreat
+
+            if (!insider.employeeDepartment) {
+                errors.push(
+                    `Insider threat row ${rowNumber}: employee department is missing.`,
+                )
+            }
+
+            if (!insider.employeeCampus) {
+                errors.push(
+                    `Insider threat row ${rowNumber}: employee campus is missing.`,
+                )
+            }
+
+            if (!insider.employeePosition) {
+                errors.push(
+                    `Insider threat row ${rowNumber}: employee position is missing.`,
+                )
+            }
+
+            if (
+                !Number.isInteger(insider.employeeSeniorityYears) ||
+                insider.employeeSeniorityYears < 0
+            ) {
+                errors.push(
+                    `Insider threat row ${rowNumber}: employee seniority years must be a non-negative integer.`,
+                )
+            }
+
+            const binaryFields: Array<[string, number]> = [
+                ['isContractor', insider.isContractor],
+                ['hasForeignCitizenship', insider.hasForeignCitizenship],
+                ['hasCriminalRecord', insider.hasCriminalRecord],
+                ['hasMedicalHistory', insider.hasMedicalHistory],
+                ['burnedFromOther', insider.burnedFromOther],
+                ['isAbroad', insider.isAbroad],
+                ['lateExitFlag', insider.lateExitFlag],
+                ['entryDuringWeekend', insider.entryDuringWeekend],
+            ]
+
+            binaryFields.forEach(([field, value]) => {
+                if (!Number.isInteger(value) || (value !== 0 && value !== 1)) {
+                    errors.push(
+                        `Insider threat row ${rowNumber}: ${field} must be 0 or 1.`,
+                    )
+                }
+            })
+
+            const nonNegativeFields: Array<[string, number]> = [
+                ['totalPrintedPages', insider.totalPrintedPages],
+                ['numPrintedPagesOffHours', insider.numPrintedPagesOffHours],
+                ['totalFilesBurned', insider.totalFilesBurned],
+                ['numEntries', insider.numEntries],
+                ['numUniqueCampus', insider.numUniqueCampus],
+            ]
+
+            nonNegativeFields.forEach(([field, value]) => {
+                if (!Number.isInteger(value) || value < 0) {
+                    errors.push(
+                        `Insider threat row ${rowNumber}: ${field} must be a non-negative integer.`,
+                    )
+                }
+            })
+
+            if (!Number.isInteger(insider.employeeClassification)) {
+                errors.push(
+                    `Insider threat row ${rowNumber}: employee classification must be an integer.`,
+                )
+            }
+
+            if (!Number.isInteger(insider.hostilityCountryLevel)) {
+                errors.push(
+                    `Insider threat row ${rowNumber}: hostility country level must be an integer.`,
+                )
+            }
+
+            if (
+                insider.tripDayNumber !== null &&
+                !Number.isFinite(insider.tripDayNumber)
+            ) {
+                errors.push(
+                    `Insider threat row ${rowNumber}: trip day number must be numeric or empty.`,
+                )
+            }
+
+            if (!insider.employeeOriginCountry) {
+                errors.push(
+                    `Insider threat row ${rowNumber}: employee origin country is missing.`,
                 )
             }
         }
@@ -700,63 +1181,41 @@ function detectDataType(
         return null
     }
 
-    const keys = new Set(
-        Object.keys(rows[0]).map(
-            normalizeKey,
-        ),
-    )
+    const keys = new Set(Object.keys(rows[0]!).map(normalizeKey))
 
-    const has = (field: string) =>
-        (FIELD_ALIASES.assets[field] ?? [])
-            .some((alias) =>
-                keys.has(normalizeKey(alias)),
-            )
-
-    const hasVulnerability = (
-        field: string,
-    ) =>
-        (
-            FIELD_ALIASES.vulnerabilities[
-            field
-            ] ?? []
-        ).some((alias) =>
+    const hasField = (type: DataType, field: string) =>
+        (FIELD_ALIASES[type][field] ?? []).some((alias) =>
             keys.has(normalizeKey(alias)),
         )
 
-    const hasControl = (field: string) =>
-        (
-            FIELD_ALIASES.controls[field] ?? []
-        ).some((alias) =>
-            keys.has(normalizeKey(alias)),
-        )
-
+    /*
+     * Insider Threat must be checked first because
+     * it has a distinctive employee/activity schema.
+     */
     if (
-        hasVulnerability('assetId') &&
-        hasVulnerability('cvss')
+        hasField('insiderThreat', 'employeeDepartment') &&
+        hasField('insiderThreat', 'employeePosition') &&
+        hasField('insiderThreat', 'isMalicious')
     ) {
+        return 'insiderThreat'
+    }
+
+    if (hasField('vulnerabilities', 'assetId') && hasField('vulnerabilities', 'cvss')) {
         return 'vulnerabilities'
     }
 
-    if (
-        hasControl('cost') &&
-        hasControl('riskReductionPct')
-    ) {
+    if (hasField('controls', 'cost') && hasField('controls', 'riskReductionPct')) {
         return 'controls'
     }
 
-    if (
-        has('value') &&
-        has('criticality')
-    ) {
+    if (hasField('assets', 'value') && hasField('assets', 'criticality')) {
         return 'assets'
     }
 
     return null
 }
 
-function buildImportPayload(
-    uploadedFiles: UploadedFile[],
-) {
+function buildImportPayload(uploadedFiles: UploadedFile[]) {
     const payload: {
         assets: NormalizedAsset[]
         vulnerabilities: NormalizedVulnerability[]
@@ -768,74 +1227,62 @@ function buildImportPayload(
     }
 
     for (const item of uploadedFiles) {
-        const rows = normalizeRows(
-            item.rows,
-            item.type,
-        )
-
-        if (item.type === 'assets') {
-            payload.assets.push(
-                ...(rows as NormalizedAsset[]),
-            )
+        if (item.type === 'insiderThreat') {
+            continue
         }
 
-        if (
-            item.type === 'vulnerabilities'
-        ) {
-            payload.vulnerabilities.push(
-                ...(rows as NormalizedVulnerability[]),
-            )
+        const rows = normalizeRows(item.rows, item.type)
+
+        if (item.type === 'assets') {
+            payload.assets.push(...(rows as NormalizedAsset[]))
+        }
+
+        if (item.type === 'vulnerabilities') {
+            payload.vulnerabilities.push(...(rows as NormalizedVulnerability[]))
         }
 
         if (item.type === 'controls') {
-            payload.controls.push(
-                ...(rows as NormalizedControl[]),
-            )
+            payload.controls.push(...(rows as NormalizedControl[]))
         }
     }
 
     return payload
 }
 
+function buildInsiderThreatPayload(uploadedFiles: UploadedFile[]) {
+    const payload: NormalizedInsiderThreat[] = []
+
+    for (const item of uploadedFiles) {
+        if (item.type !== 'insiderThreat') {
+            continue
+        }
+
+        const rows = normalizeRows(item.rows, item.type)
+        payload.push(...(rows as NormalizedInsiderThreat[]))
+    }
+
+    return payload
+}
+
 function validateRelationships(
-    payload: ReturnType<
-        typeof buildImportPayload
-    >,
+    payload: ReturnType<typeof buildImportPayload>,
 ) {
     const errors: string[] = []
 
-    if (
-        payload.vulnerabilities.length > 0 &&
-        payload.assets.length === 0
-    ) {
-        errors.push(
-            'Assets are required when vulnerability data is uploaded.',
-        )
-
+    if (payload.vulnerabilities.length > 0 && payload.assets.length === 0) {
+        errors.push('Assets are required when vulnerability data is uploaded.')
         return errors
     }
 
-    const assetIds = new Set(
-        payload.assets.map(
-            (asset) => asset.id,
-        ),
-    )
+    const assetIds = new Set(payload.assets.map((asset) => asset.id))
 
-    payload.vulnerabilities.forEach(
-        (vulnerability, index) => {
-            if (
-                vulnerability.assetId &&
-                !assetIds.has(
-                    vulnerability.assetId,
-                )
-            ) {
-                errors.push(
-                    `Vulnerability row ${index + 2
-                    }: assetId "${vulnerability.assetId}" does not match any uploaded asset.`,
-                )
-            }
-        },
-    )
+    payload.vulnerabilities.forEach((vulnerability, index) => {
+        if (vulnerability.assetId && !assetIds.has(vulnerability.assetId)) {
+            errors.push(
+                `Vulnerability row ${index + 2}: assetId "${vulnerability.assetId}" does not match any uploaded asset.`,
+            )
+        }
+    })
 
     return errors
 }
@@ -843,7 +1290,7 @@ function validateRelationships(
 function formatStepState(
     step: ProcessingStep,
     currentStep: ProcessingStep,
-) {
+): 'complete' | 'active' | 'pending' {
     const order: ProcessingStep[] = [
         'reading',
         'normalizing',
@@ -853,9 +1300,7 @@ function formatStepState(
         'done',
     ]
 
-    const currentIndex =
-        order.indexOf(currentStep)
-
+    const currentIndex = order.indexOf(currentStep)
     const stepIndex = order.indexOf(step)
 
     if (stepIndex < currentIndex) {
@@ -877,168 +1322,105 @@ const PROCESSING_STEPS: {
         {
             id: 'reading',
             label: 'Reading uploaded files',
-            description:
-                'Parsing CSV and JSON records',
+            description: 'Parsing CSV and JSON records',
         },
         {
             id: 'normalizing',
             label: 'Normalizing security data',
-            description:
-                'Mapping fields into the CyberSpend data model',
+            description: 'Mapping fields into the CyberSpend data model',
         },
         {
             id: 'validating',
             label: 'Validating records',
-            description:
-                'Checking fields and asset relationships',
+            description: 'Checking fields and relationships',
         },
         {
             id: 'saving',
             label: 'Saving security data',
-            description:
-                'Writing validated data to the security database',
+            description: 'Writing validated data to the security database',
         },
         {
             id: 'risk',
             label: 'Calculating cyber risk',
-            description:
-                'Refreshing the financial risk model',
+            description: 'Refreshing the financial risk model',
         },
     ]
 
-function FileIcon({
-    fileName,
-}: {
-    fileName: string
-}) {
-    const isJson = fileName
-        .toLowerCase()
-        .endsWith('.json')
+function FileIcon({ fileName }: { fileName: string }) {
+    const isJson = fileName.toLowerCase().endsWith('.json')
+    return isJson ? <FileJson size={20} /> : <FileSpreadsheet size={20} />
+}
 
-    return isJson ? (
-        <FileJson size={20} />
-    ) : (
-        <FileSpreadsheet size={20} />
-    )
+function getDatasetIcon(type: DataType) {
+    if (type === 'assets') return <Server size={18} />
+    if (type === 'vulnerabilities') return <Bug size={18} />
+    if (type === 'controls') return <ShieldCheck size={18} />
+    return <UserRoundSearch size={18} />
 }
 
 export default function CompanyDataImport() {
     const navigate = useNavigate()
-    const inputRef =
-        useRef<HTMLInputElement>(null)
+    const inputRef = useRef<HTMLInputElement>(null)
 
-    const [activeType, setActiveType] =
-        useState<DataType>('assets')
-
-    const [uploadedFiles, setUploadedFiles] =
-        useState<UploadedFile[]>([])
-
-    const [processing, setProcessing] =
-        useState(false)
-
-    const [completed, setCompleted] =
-        useState(false)
-
-    const [processingStep, setProcessingStep] =
-        useState<ProcessingStep>('reading')
-
+    const [activeType, setActiveType] = useState<DataType>('assets')
+    const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+    const [processing, setProcessing] = useState(false)
+    const [completed, setCompleted] = useState(false)
+    const [processingStep, setProcessingStep] = useState<ProcessingStep>('reading')
     const [error, setError] = useState('')
+    const [validationErrors, setValidationErrors] = useState<string[]>([])
+    const [importStats, setImportStats] = useState<ImportStats>({
+        assets: 0,
+        vulnerabilities: 0,
+        controls: 0,
+        insiderThreatEvents: 0,
+    })
 
-    const [
-        validationErrors,
-        setValidationErrors,
-    ] = useState<string[]>([])
-
-    const [importStats, setImportStats] =
-        useState<ImportStats>({
-            assets: 0,
-            vulnerabilities: 0,
-            controls: 0,
-        })
-
-    const activeFile = uploadedFiles.find(
-        (item) =>
-            item.type === activeType,
-    )
+    const activeFile = uploadedFiles.find((item) => item.type === activeType)
 
     const activeRows = useMemo(() => {
-        if (!activeFile) {
-            return []
-        }
-
-        return normalizeRows(
-            activeFile.rows,
-            activeFile.type,
-        )
+        if (!activeFile) return []
+        return normalizeRows(activeFile.rows, activeFile.type)
     }, [activeFile])
 
-    const activeValidationErrors =
-        useMemo(() => {
-            if (!activeFile) {
-                return []
-            }
-
-            return validateRows(
-                activeRows,
-                activeFile.type,
-            )
-        }, [activeFile, activeRows])
+    const activeValidationErrors = useMemo(() => {
+        if (!activeFile) return []
+        return validateRows(activeRows, activeFile.type)
+    }, [activeFile, activeRows])
 
     const importPayload = useMemo(
-        () =>
-            buildImportPayload(
-                uploadedFiles,
-            ),
+        () => buildImportPayload(uploadedFiles),
+        [uploadedFiles],
+    )
+
+    const insiderThreatPayload = useMemo(
+        () => buildInsiderThreatPayload(uploadedFiles),
         [uploadedFiles],
     )
 
     const relationshipErrors = useMemo(
-        () =>
-            validateRelationships(
-                importPayload,
-            ),
+        () => validateRelationships(importPayload),
         [importPayload],
     )
 
     const totalRecords =
         importPayload.assets.length +
         importPayload.vulnerabilities.length +
-        importPayload.controls.length
+        importPayload.controls.length +
+        insiderThreatPayload.length
 
     const allLocalErrors = useMemo(() => {
-        const errors = uploadedFiles.flatMap(
-            (item) =>
-                validateRows(
-                    normalizeRows(
-                        item.rows,
-                        item.type,
-                    ),
-                    item.type,
-                ),
+        const errors = uploadedFiles.flatMap((item) =>
+            validateRows(normalizeRows(item.rows, item.type), item.type),
         )
+        return [...errors, ...relationshipErrors]
+    }, [uploadedFiles, relationshipErrors])
 
-        return [
-            ...errors,
-            ...relationshipErrors,
-        ]
-    }, [
-        uploadedFiles,
-        relationshipErrors,
-    ])
+    async function handleFile(file: File) {
+        const extension = file.name.toLowerCase()
 
-    async function handleFile(
-        file: File,
-    ) {
-        const extension = file.name
-            .toLowerCase()
-
-        if (
-            !extension.endsWith('.csv') &&
-            !extension.endsWith('.json')
-        ) {
-            setError(
-                'Only CSV and JSON files are supported.',
-            )
+        if (!extension.endsWith('.csv') && !extension.endsWith('.json')) {
+            setError('Only CSV and JSON files are supported.')
             return
         }
 
@@ -1046,121 +1428,96 @@ export default function CompanyDataImport() {
             setError('')
             setValidationErrors([])
 
-            /*
-             * Parse once using the selected type only
-             * to read the rows. The actual dataset type
-             * is then detected from the column structure.
-             */
-            const rows =
-                await parseDataFile(
-                    file,
-                    activeType,
-                )
+            const rows = await parseDataFile(file, activeType)
 
             if (!rows.length) {
-                throw new Error(
-                    'No data rows were found in this file.',
-                )
+                throw new Error('No data rows were found in this file.')
             }
 
-            const detectedType =
-                detectDataType(rows)
+            const detectedType = detectDataType(rows)
 
             if (!detectedType) {
                 throw new Error(
-                    'Could not identify this dataset. Please use the expected Asset, Vulnerability or Control fields.',
+                    'Could not identify this dataset. Please use Asset, Vulnerability, Control or Insider Threat fields.',
                 )
             }
 
-            const uploaded: UploadedFile = {
-                file,
-                type: detectedType,
-                rows,
-            }
+            const uploaded: UploadedFile = { file, type: detectedType, rows }
 
             setActiveType(detectedType)
-
-            setUploadedFiles(
-                (current) => [
-                    ...current.filter(
-                        (item) =>
-                            item.type !==
-                            detectedType,
-                    ),
-                    uploaded,
-                ],
-            )
+            setUploadedFiles((current) => [
+                ...current.filter((item) => item.type !== detectedType),
+                uploaded,
+            ])
         } catch (err) {
-            console.error(
-                'File import error:',
-                err,
-            )
-
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : 'Could not read the file.',
-            )
+            console.error('File import error:', err)
+            setError(err instanceof Error ? err.message : 'Could not read the file.')
         }
     }
 
-    function removeFile(
-        type: DataType,
-    ) {
-        setUploadedFiles(
-            (current) =>
-                current.filter(
-                    (item) =>
-                        item.type !== type,
-                ),
-        )
-
+    function removeFile(type: DataType) {
+        setUploadedFiles((current) => current.filter((item) => item.type !== type))
         setValidationErrors([])
         setError('')
     }
 
     async function validateImportPayload() {
-        if (allLocalErrors.length > 0) {
-            return {
-                valid: false,
-                errors: allLocalErrors,
-            }
+        if (
+            importPayload.assets.length === 0 &&
+            importPayload.vulnerabilities.length === 0 &&
+            importPayload.controls.length === 0
+        ) {
+            return { valid: true, errors: [] as string[] }
         }
 
         try {
-            const response =
-                await apiFetch<BackendValidationResponse>(
-                    '/api/import/validate',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify(
-                            importPayload,
-                        ),
-                    },
-                )
+            const response = await apiFetch<BackendValidationResponse>(
+                '/api/import/validate',
+                { method: 'POST', body: JSON.stringify(importPayload) },
+            )
 
             if (!response.valid) {
                 return {
                     valid: false,
-                    errors:
-                        response.errors.map(
-                            (item) =>
-                                `${item.field}: ${item.message}`,
-                        ),
+                    errors: response.errors.map((item) => `${item.field}: ${item.message}`),
                 }
             }
 
+            return { valid: true, errors: [] as string[] }
+        } catch (err) {
             return {
-                valid: true,
-                errors: [],
+                valid: false,
+                errors: [err instanceof Error ? err.message : 'Backend validation failed.'],
             }
+        }
+    }
+
+    async function validateInsiderThreatPayload() {
+        if (insiderThreatPayload.length === 0) {
+            return { valid: true, errors: [] as string[] }
+        }
+
+        try {
+            const response = await apiFetch<InsiderThreatValidationResponse>(
+                '/api/import/insider-threat/validate',
+                { method: 'POST', body: JSON.stringify(insiderThreatPayload) },
+            )
+
+            if (!response.valid) {
+                return {
+                    valid: false,
+                    errors: response.errors.map((item) => `${item.field}: ${item.message}`),
+                }
+            }
+
+            return { valid: true, errors: [] as string[] }
         } catch (err) {
             return {
                 valid: false,
                 errors: [
                     err instanceof Error
                         ? err.message
-                        : 'Backend validation failed.',
+                        : 'Insider threat backend validation failed.',
                 ],
             }
         }
@@ -1168,35 +1525,21 @@ export default function CompanyDataImport() {
 
     async function importData() {
         if (uploadedFiles.length === 0) {
-            setError(
-                'Upload at least one dataset before importing.',
-            )
+            setError('Upload at least one dataset before importing.')
             return
         }
 
-        if (
-            importPayload.vulnerabilities
-                .length > 0 &&
-            importPayload.assets.length === 0
-        ) {
-            setError(
-                'Upload the Asset Inventory before importing vulnerability data.',
-            )
+        if (importPayload.vulnerabilities.length > 0 && importPayload.assets.length === 0) {
+            setError('Upload the Asset Inventory before importing vulnerability data.')
             return
         }
 
         if (allLocalErrors.length > 0) {
-            setValidationErrors(
-                allLocalErrors.slice(0, 20),
-            )
-
+            setValidationErrors(allLocalErrors.slice(0, 20))
             setError(
-                `Please fix ${allLocalErrors.length} validation issue${allLocalErrors.length === 1
-                    ? ''
-                    : 's'
+                `Please fix ${allLocalErrors.length} validation issue${allLocalErrors.length === 1 ? '' : 's'
                 } before importing.`,
             )
-
             return
         }
 
@@ -1207,104 +1550,109 @@ export default function CompanyDataImport() {
         setProcessingStep('reading')
 
         try {
-            await new Promise((resolve) =>
-                setTimeout(resolve, 250),
-            )
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            setProcessingStep('normalizing')
 
-            setProcessingStep(
-                'normalizing',
-            )
+            const payload = buildImportPayload(uploadedFiles)
+            const insiderPayload = buildInsiderThreatPayload(uploadedFiles)
 
-            const payload =
-                buildImportPayload(
-                    uploadedFiles,
-                )
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            setProcessingStep('validating')
 
-            await new Promise((resolve) =>
-                setTimeout(resolve, 250),
-            )
+            const [companyValidation, insiderValidation] = await Promise.all([
+                validateImportPayload(),
+                validateInsiderThreatPayload(),
+            ])
 
-            setProcessingStep(
-                'validating',
-            )
+            const backendErrors = [...companyValidation.errors, ...insiderValidation.errors]
 
-            const validation =
-                await validateImportPayload()
-
-            if (!validation.valid) {
-                setValidationErrors(
-                    validation.errors.slice(0, 20),
-                )
-
+            if (!companyValidation.valid || !insiderValidation.valid) {
+                setValidationErrors(backendErrors.slice(0, 20))
                 setError(
-                    `Please fix ${validation.errors.length} validation issue${validation.errors.length ===
-                        1
-                        ? ''
-                        : 's'
+                    `Please fix ${backendErrors.length} validation issue${backendErrors.length === 1 ? '' : 's'
                     } before importing.`,
                 )
-
                 return
             }
 
             setProcessingStep('saving')
 
-            const result =
-                await apiFetch<{
+            let companyImported = { assets: 0, vulnerabilities: 0, controls: 0 }
+            let insiderThreatEvents = 0
+
+            if (
+                payload.assets.length > 0 ||
+                payload.vulnerabilities.length > 0 ||
+                payload.controls.length > 0
+            ) {
+                const result = await apiFetch<{
                     success: boolean
-                    message: string
-                    imported: ImportStats & {
+                    message?: string
+                    imported: {
+                        assets: number
+                        vulnerabilities: number
+                        controls: number
                         total: number
                     }
-                }>('/api/import', {
-                    method: 'POST',
-                    body: JSON.stringify(
-                        payload,
-                    ),
-                })
+                }>('/api/import', { method: 'POST', body: JSON.stringify(payload) })
 
-            if (!result.success) {
-                throw new Error(
-                    result.message ||
-                    'The backend could not complete the import.',
-                )
+                if (!result.success) {
+                    throw new Error(
+                        result.message || 'The backend could not complete the company data import.',
+                    )
+                }
+
+                companyImported = result.imported
             }
 
-            setImportStats(
-                result.imported,
-            )
+            if (insiderPayload.length > 0) {
+                const insiderResult = await apiFetch<{
+                    success: boolean
+                    message?: string
+                    imported: { insiderThreatEvents: number; total: number }
+                }>('/api/import/insider-threat', {
+                    method: 'POST',
+                    body: JSON.stringify(insiderPayload),
+                })
 
-            setProcessingStep('risk')
+                if (!insiderResult.success) {
+                    throw new Error(
+                        insiderResult.message ||
+                        'The backend could not complete the insider threat import.',
+                    )
+                }
 
-            await apiFetch('/api/risk')
+                insiderThreatEvents = insiderResult.imported.insiderThreatEvents
+            }
 
-            setProcessingStep('done')
-
-            await new Promise((resolve) =>
-                setTimeout(resolve, 400),
-            )
+            setImportStats({
+                assets: companyImported.assets,
+                vulnerabilities: companyImported.vulnerabilities,
+                controls: companyImported.controls,
+                insiderThreatEvents,
+            })
 
             /*
-             * Unlock the application.
-             * App.tsx ProtectedRoute uses the same key.
+             * Refresh financial risk only when
+             * normal company security data exists.
              */
-            localStorage.setItem(
-                IMPORT_STORAGE_KEY,
-                'true',
-            )
+            if (
+                payload.assets.length > 0 ||
+                payload.vulnerabilities.length > 0 ||
+                payload.controls.length > 0
+            ) {
+                setProcessingStep('risk')
+                await apiFetch('/api/risk')
+            }
 
+            setProcessingStep('done')
+            await new Promise((resolve) => setTimeout(resolve, 400))
+
+            localStorage.setItem(IMPORT_STORAGE_KEY, 'true')
             setCompleted(true)
         } catch (err) {
-            console.error(
-                'Import failed:',
-                err,
-            )
-
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : 'Import failed. Please try again.',
-            )
+            console.error('Import failed:', err)
+            setError(err instanceof Error ? err.message : 'Import failed. Please try again.')
         } finally {
             setProcessing(false)
         }
@@ -1318,34 +1666,24 @@ export default function CompanyDataImport() {
         inputRef.current?.click()
     }
 
-    function handleDrop(
-        event: React.DragEvent<HTMLDivElement>,
-    ) {
+    function handleDrop(event: React.DragEvent<HTMLDivElement>) {
         event.preventDefault()
+        if (processing) return
 
-        const file =
-            event.dataTransfer.files?.[0]
-
+        const file = event.dataTransfer.files?.[0]
         if (file) {
             void handleFile(file)
         }
     }
 
-    function renderProcessingIcon(
-        state:
-            | 'complete'
-            | 'active'
-            | 'pending',
-    ) {
+    function renderProcessingIcon(state: 'complete' | 'active' | 'pending') {
         if (state === 'complete') {
             return (
                 <div
                     className="flex h-6 w-6 items-center justify-center rounded-full"
                     style={{
-                        background:
-                            'var(--status-success-bg)',
-                        color:
-                            'var(--status-success-text)',
+                        background: 'var(--status-success-bg)',
+                        color: 'var(--status-success-text)',
                     }}
                 >
                     <Check size={13} />
@@ -1358,16 +1696,11 @@ export default function CompanyDataImport() {
                 <div
                     className="flex h-6 w-6 items-center justify-center rounded-full"
                     style={{
-                        background:
-                            'var(--bg-surface-raised)',
-                        color:
-                            'var(--text-primary)',
+                        background: 'var(--bg-surface-raised)',
+                        color: 'var(--text-primary)',
                     }}
                 >
-                    <Loader2
-                        size={14}
-                        className="animate-spin"
-                    />
+                    <Loader2 size={14} className="animate-spin" />
                 </div>
             )
         }
@@ -1375,137 +1708,93 @@ export default function CompanyDataImport() {
         return (
             <div
                 className="h-6 w-6 rounded-full border"
-                style={{
-                    borderColor:
-                        'var(--border-hairline)',
-                }}
+                style={{ borderColor: 'var(--border-hairline)' }}
             />
         )
     }
 
     if (processing) {
         return (
-            <div
-                className="min-h-screen px-5 py-10"
-                style={{
-                    background:
-                        'var(--bg-base)',
-                }}
-            >
+            <div className="min-h-screen px-5 py-10" style={{ background: 'var(--bg-base)' }}>
                 <div className="mx-auto flex min-h-[80vh] max-w-xl items-center">
                     <div className="w-full">
                         <div className="text-center">
                             <div
                                 className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border"
                                 style={{
-                                    borderColor:
-                                        'var(--border-hairline)',
-                                    background:
-                                        'var(--bg-surface)',
+                                    borderColor: 'var(--border-hairline)',
+                                    background: 'var(--bg-surface)',
                                 }}
                             >
                                 <Loader2
                                     size={22}
                                     className="animate-spin"
-                                    style={{
-                                        color:
-                                            'var(--text-primary)',
-                                    }}
+                                    style={{ color: 'var(--text-primary)' }}
                                 />
                             </div>
 
                             <h1
                                 className="mt-6 text-2xl font-semibold tracking-tight"
-                                style={{
-                                    color:
-                                        'var(--text-primary)',
-                                }}
+                                style={{ color: 'var(--text-primary)' }}
                             >
                                 Processing Security Data
                             </h1>
 
                             <p
                                 className="mx-auto mt-2 max-w-md text-sm"
-                                style={{
-                                    color:
-                                        'var(--text-secondary)',
-                                }}
+                                style={{ color: 'var(--text-secondary)' }}
                             >
-                                Validating your security
-                                data and preparing the
-                                financial cyber risk model.
+                                Validating your security data and preparing the CyberSpend risk
+                                environment.
                             </p>
                         </div>
 
                         <div
                             className="mt-8 rounded-xl border p-5"
                             style={{
-                                borderColor:
-                                    'var(--border-hairline)',
-                                background:
-                                    'var(--bg-surface)',
+                                borderColor: 'var(--border-hairline)',
+                                background: 'var(--bg-surface)',
                             }}
                         >
                             <div className="space-y-5">
-                                {PROCESSING_STEPS.map(
-                                    (step) => {
-                                        const state =
-                                            formatStepState(
-                                                step.id,
-                                                processingStep,
-                                            )
+                                {PROCESSING_STEPS.map((step) => {
+                                    const state = formatStepState(step.id, processingStep)
 
-                                        return (
-                                            <div
-                                                key={step.id}
-                                                className="flex gap-3"
-                                            >
-                                                {renderProcessingIcon(
-                                                    state,
-                                                )}
+                                    return (
+                                        <div key={step.id} className="flex gap-3">
+                                            {renderProcessingIcon(state)}
 
-                                                <div>
-                                                    <p
-                                                        className="text-sm font-medium"
-                                                        style={{
-                                                            color:
-                                                                state ===
-                                                                    'pending'
-                                                                    ? 'var(--text-tertiary)'
-                                                                    : 'var(--text-primary)',
-                                                        }}
-                                                    >
-                                                        {step.label}
-                                                    </p>
+                                            <div>
+                                                <p
+                                                    className="text-sm font-medium"
+                                                    style={{
+                                                        color:
+                                                            state === 'pending'
+                                                                ? 'var(--text-tertiary)'
+                                                                : 'var(--text-primary)',
+                                                    }}
+                                                >
+                                                    {step.label}
+                                                </p>
 
-                                                    <p
-                                                        className="mt-0.5 text-xs"
-                                                        style={{
-                                                            color:
-                                                                'var(--text-tertiary)',
-                                                        }}
-                                                    >
-                                                        {
-                                                            step.description
-                                                        }
-                                                    </p>
-                                                </div>
+                                                <p
+                                                    className="mt-0.5 text-xs"
+                                                    style={{ color: 'var(--text-tertiary)' }}
+                                                >
+                                                    {step.description}
+                                                </p>
                                             </div>
-                                        )
-                                    },
-                                )}
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
 
                         <p
                             className="mt-4 text-center text-xs"
-                            style={{
-                                color:
-                                    'var(--text-tertiary)',
-                            }}
+                            style={{ color: 'var(--text-tertiary)' }}
                         >
-                            {totalRecords} records are being
-                            processed.
+                            {totalRecords} records are being processed.
                         </p>
                     </div>
                 </div>
@@ -1515,22 +1804,14 @@ export default function CompanyDataImport() {
 
     if (completed) {
         return (
-            <div
-                className="min-h-screen px-5 py-10"
-                style={{
-                    background:
-                        'var(--bg-base)',
-                }}
-            >
-                <div className="mx-auto flex min-h-[80vh] max-w-xl items-center justify-center">
+            <div className="min-h-screen px-5 py-10" style={{ background: 'var(--bg-base)' }}>
+                <div className="mx-auto flex min-h-[80vh] max-w-2xl items-center justify-center">
                     <div className="w-full text-center">
                         <div
                             className="mx-auto flex h-14 w-14 items-center justify-center rounded-full"
                             style={{
-                                background:
-                                    'var(--status-success-bg)',
-                                color:
-                                    'var(--status-success-text)',
+                                background: 'var(--status-success-bg)',
+                                color: 'var(--status-success-text)',
                             }}
                         >
                             <CheckCircle2 size={28} />
@@ -1538,75 +1819,55 @@ export default function CompanyDataImport() {
 
                         <p
                             className="mt-6 text-xs font-medium uppercase tracking-widest"
-                            style={{
-                                color:
-                                    'var(--text-tertiary)',
-                            }}
+                            style={{ color: 'var(--text-tertiary)' }}
                         >
                             Import Complete
                         </p>
 
                         <h1
                             className="mt-2 text-3xl font-semibold tracking-tight"
-                            style={{
-                                color:
-                                    'var(--text-primary)',
-                            }}
+                            style={{ color: 'var(--text-primary)' }}
                         >
                             Security environment ready
                         </h1>
 
                         <p
                             className="mx-auto mt-3 max-w-md text-sm"
-                            style={{
-                                color:
-                                    'var(--text-secondary)',
-                            }}
+                            style={{ color: 'var(--text-secondary)' }}
                         >
-                            Your data has been imported and
-                            the financial risk engine is ready
-                            for analysis.
+                            Your uploaded data has been validated and imported successfully.
                         </p>
 
-                        <div className="mt-8 grid grid-cols-3 gap-3">
+                        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
                             <SummaryCard
                                 icon={<Server size={17} />}
-                                value={
-                                    importStats.assets
-                                }
+                                value={importStats.assets}
                                 label="Assets"
                             />
-
                             <SummaryCard
                                 icon={<Bug size={17} />}
-                                value={
-                                    importStats.vulnerabilities
-                                }
+                                value={importStats.vulnerabilities}
                                 label="Vulnerabilities"
                             />
-
                             <SummaryCard
-                                icon={
-                                    <ShieldCheck size={17} />
-                                }
-                                value={
-                                    importStats.controls
-                                }
+                                icon={<ShieldCheck size={17} />}
+                                value={importStats.controls}
                                 label="Controls"
+                            />
+                            <SummaryCard
+                                icon={<UserRoundSearch size={17} />}
+                                value={importStats.insiderThreatEvents}
+                                label="Insider Events"
                             />
                         </div>
 
                         <button
                             type="button"
-                            onClick={
-                                handleContinue
-                            }
+                            onClick={handleContinue}
                             className="mt-8 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-85"
                             style={{
-                                background:
-                                    'var(--accent-action)',
-                                color:
-                                    'var(--text-inverse)',
+                                background: 'var(--accent-action)',
+                                color: 'var(--text-inverse)',
                             }}
                         >
                             Open Dashboard
@@ -1618,25 +1879,21 @@ export default function CompanyDataImport() {
         )
     }
 
+    const activeDataset = DATA_TYPES.find((item) => item.value === activeType)
+
     return (
         <div
             className="min-h-screen px-5 py-8 md:px-8 md:py-12"
-            style={{
-                background:
-                    'var(--bg-base)',
-            }}
+            style={{ background: 'var(--bg-base)' }}
         >
-            <div className="mx-auto max-w-5xl">
-                {/* Header */}
+            <div className="mx-auto max-w-6xl">
                 <header className="mb-9">
                     <div className="flex items-center gap-2.5">
                         <div
                             className="flex h-8 w-8 items-center justify-center rounded-lg"
                             style={{
-                                background:
-                                    'var(--accent-action)',
-                                color:
-                                    'var(--text-inverse)',
+                                background: 'var(--accent-action)',
+                                color: 'var(--text-inverse)',
                             }}
                         >
                             <Database size={16} />
@@ -1644,133 +1901,100 @@ export default function CompanyDataImport() {
 
                         <span
                             className="text-sm font-semibold"
-                            style={{
-                                color:
-                                    'var(--text-primary)',
-                            }}
+                            style={{ color: 'var(--text-primary)' }}
                         >
                             CyberSpend AI
                         </span>
                     </div>
 
                     <div className="mt-9">
-
                         <h1
-                            className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl"
-                            style={{
-                                color:
-                                    'var(--text-primary)',
-                            }}
+                            className="text-3xl font-semibold tracking-tight md:text-4xl"
+                            style={{ color: 'var(--text-primary)' }}
                         >
                             Import security data
                         </h1>
 
                         <p
                             className="mt-2 max-w-2xl text-sm"
-                            style={{
-                                color:
-                                    'var(--text-secondary)',
-                            }}
+                            style={{ color: 'var(--text-secondary)' }}
                         >
-                            Upload your organization's
-                            security datasets to unlock the
-                            CyberSpend risk analysis platform.
+                            Upload your organization's security datasets to unlock the CyberSpend
+                            risk analysis platform.
                         </p>
                     </div>
                 </header>
 
                 <section>
                     <div className="mb-3 flex items-center justify-between">
-                        <div>
-                            <h2
-                                className="text-sm font-semibold"
-                                style={{
-                                    color:
-                                        'var(--text-primary)',
-                                }}
-                            >
-                                Security datasets
-                            </h2>
+                        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                            Security datasets
+                        </h2>
 
-                        </div>
-
-                        <span
-                            className="text-xs"
-                            style={{
-                                color:
-                                    'var(--text-tertiary)',
-                            }}
-                        >
-                            {uploadedFiles.length}/3
-                            uploaded
+                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                            {uploadedFiles.length} / 4 uploaded
                         </span>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                         {DATA_TYPES.map((item) => {
-                            const selected =
-                                activeType === item.value
-
-                            const uploaded =
-                                uploadedFiles.some(
-                                    (file) =>
-                                        file.type ===
-                                        item.value,
-                                )
+                            const selected = activeType === item.value
+                            const uploaded = uploadedFiles.some(
+                                (file) => file.type === item.value,
+                            )
 
                             return (
                                 <button
                                     key={item.value}
                                     type="button"
                                     onClick={() => {
-                                        setActiveType(
-                                            item.value,
-                                        )
+                                        setActiveType(item.value)
                                         setError('')
-                                        setValidationErrors(
-                                            [],
-                                        )
+                                        setValidationErrors([])
                                     }}
                                     className="rounded-xl border p-4 text-left transition-colors"
                                     style={{
                                         borderColor: selected
                                             ? 'var(--text-primary)'
                                             : 'var(--border-hairline)',
-                                        background:
-                                            'var(--bg-surface)',
+                                        background: 'var(--bg-surface)',
                                     }}
                                 >
                                     <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <p
-                                                className="text-sm font-medium"
+                                        <div className="flex min-w-0 gap-3">
+                                            <div
+                                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
                                                 style={{
-                                                    color:
-                                                        'var(--text-primary)',
+                                                    background: 'var(--bg-surface-raised)',
+                                                    color: 'var(--text-secondary)',
                                                 }}
                                             >
-                                                {item.label}
-                                            </p>
+                                                {getDatasetIcon(item.value)}
+                                            </div>
 
-                                            <p
-                                                className="mt-1 text-xs leading-relaxed"
-                                                style={{
-                                                    color:
-                                                        'var(--text-tertiary)',
-                                                }}
-                                            >
-                                                {item.description}
-                                            </p>
+                                            <div>
+                                                <p
+                                                    className="text-sm font-medium"
+                                                    style={{ color: 'var(--text-primary)' }}
+                                                >
+                                                    {item.label}
+                                                </p>
+
+                                                <p
+                                                    className="mt-1 text-xs leading-relaxed"
+                                                    style={{ color: 'var(--text-tertiary)' }}
+                                                >
+                                                    {item.description}
+                                                </p>
+                                            </div>
                                         </div>
 
                                         {uploaded && (
                                             <div
                                                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
                                                 style={{
-                                                    background:
-                                                        'var(--status-success-bg)',
-                                                    color:
-                                                        'var(--status-success-text)',
+                                                    background: 'var(--status-success-bg)',
+                                                    color: 'var(--status-success-text)',
                                                 }}
                                             >
                                                 <Check size={12} />
@@ -1783,63 +2007,47 @@ export default function CompanyDataImport() {
                     </div>
                 </section>
 
-                {/* Upload */}
                 <section
                     className="mt-5 rounded-xl border p-5 md:p-6"
                     style={{
-                        borderColor:
-                            'var(--border-hairline)',
-                        background:
-                            'var(--bg-surface)',
+                        borderColor: 'var(--border-hairline)',
+                        background: 'var(--bg-surface)',
                     }}
                 >
                     <div className="mb-4">
-                        <h2
-                            className="text-sm font-semibold"
-                            style={{
-                                color:
-                                    'var(--text-primary)',
-                            }}
-                        >
-                            {DATA_TYPES.find(
-                                (item) =>
-                                    item.value ===
-                                    activeType,
-                            )?.label}
+                        <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                            {activeDataset?.label}
                         </h2>
 
-                        <p
-                            className="mt-1 text-xs"
-                            style={{
-                                color:
-                                    'var(--text-tertiary)',
-                            }}
-                        >
-                            CSV and JSON files are
-                            supported. Dataset type is detected
+                        <p className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                            CSV and JSON files are supported. Dataset type is detected
                             automatically from its fields.
                         </p>
+
+                        {activeType === 'insiderThreat' && (
+                            <div
+                                className="mt-3 rounded-lg border px-3 py-2.5 text-xs"
+                                style={{
+                                    borderColor: 'var(--border-hairline-soft)',
+                                    background: 'var(--bg-base)',
+                                    color: 'var(--text-secondary)',
+                                }}
+                            >
+                                Insider Threat CSV files do not need an ID column. CyberSpend
+                                automatically generates stable record IDs during import.
+                            </div>
+                        )}
                     </div>
 
                     <div
-                        onDragOver={(event) =>
-                            event.preventDefault()
-                        }
+                        onDragOver={(event) => event.preventDefault()}
                         onDrop={handleDrop}
-                        onClick={
-                            activeFile
-                                ? undefined
-                                : openFilePicker
-                        }
+                        onClick={activeFile ? undefined : openFilePicker}
                         className="rounded-xl border border-dashed p-8 text-center md:p-12"
                         style={{
-                            borderColor:
-                                'var(--border-hairline)',
-                            background:
-                                'var(--bg-base)',
-                            cursor: activeFile
-                                ? 'default'
-                                : 'pointer',
+                            borderColor: 'var(--border-hairline)',
+                            background: 'var(--bg-base)',
+                            cursor: activeFile ? 'default' : 'pointer',
                         }}
                     >
                         {activeFile ? (
@@ -1847,54 +2055,33 @@ export default function CompanyDataImport() {
                                 <div
                                     className="mx-auto flex h-11 w-11 items-center justify-center rounded-lg"
                                     style={{
-                                        background:
-                                            'var(--bg-surface)',
-                                        color:
-                                            'var(--text-primary)',
+                                        background: 'var(--bg-surface)',
+                                        color: 'var(--text-primary)',
                                     }}
                                 >
-                                    <FileIcon
-                                        fileName={
-                                            activeFile.file.name
-                                        }
-                                    />
+                                    <FileIcon fileName={activeFile.file.name} />
                                 </div>
 
                                 <p
                                     className="mt-4 text-sm font-medium"
-                                    style={{
-                                        color:
-                                            'var(--text-primary)',
-                                    }}
+                                    style={{ color: 'var(--text-primary)' }}
                                 >
                                     {activeFile.file.name}
                                 </p>
 
-                                <p
-                                    className="mt-1 text-xs"
-                                    style={{
-                                        color:
-                                            'var(--text-tertiary)',
-                                    }}
-                                >
-                                    {activeRows.length} records
-                                    detected
+                                <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                                    {activeRows.length} records detected
                                 </p>
 
                                 <div className="mt-5 flex justify-center gap-2">
                                     <button
                                         type="button"
-                                        onClick={
-                                            openFilePicker
-                                        }
+                                        onClick={openFilePicker}
                                         className="rounded-md border px-3 py-2 text-xs font-medium"
                                         style={{
-                                            borderColor:
-                                                'var(--border-hairline)',
-                                            background:
-                                                'var(--bg-surface)',
-                                            color:
-                                                'var(--text-primary)',
+                                            borderColor: 'var(--border-hairline)',
+                                            background: 'var(--bg-surface)',
+                                            color: 'var(--text-primary)',
                                         }}
                                     >
                                         Replace file
@@ -1902,19 +2089,12 @@ export default function CompanyDataImport() {
 
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            removeFile(
-                                                activeType,
-                                            )
-                                        }
+                                        onClick={() => removeFile(activeType)}
                                         className="rounded-md border px-3 py-2 text-xs font-medium"
                                         style={{
-                                            borderColor:
-                                                'var(--border-hairline)',
-                                            background:
-                                                'var(--bg-surface)',
-                                            color:
-                                                'var(--status-danger-text)',
+                                            borderColor: 'var(--border-hairline)',
+                                            background: 'var(--bg-surface)',
+                                            color: 'var(--status-danger-text)',
                                         }}
                                     >
                                         Remove
@@ -1926,10 +2106,8 @@ export default function CompanyDataImport() {
                                 <div
                                     className="mx-auto flex h-11 w-11 items-center justify-center rounded-lg"
                                     style={{
-                                        background:
-                                            'var(--bg-surface)',
-                                        color:
-                                            'var(--text-secondary)',
+                                        background: 'var(--bg-surface)',
+                                        color: 'var(--text-secondary)',
                                     }}
                                 >
                                     <Upload size={20} />
@@ -1937,21 +2115,12 @@ export default function CompanyDataImport() {
 
                                 <p
                                     className="mt-4 text-sm font-medium"
-                                    style={{
-                                        color:
-                                            'var(--text-primary)',
-                                    }}
+                                    style={{ color: 'var(--text-primary)' }}
                                 >
                                     Drop your file here
                                 </p>
 
-                                <p
-                                    className="mt-1 text-xs"
-                                    style={{
-                                        color:
-                                            'var(--text-tertiary)',
-                                    }}
-                                >
+                                <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
                                     or browse from your computer
                                 </p>
 
@@ -1963,10 +2132,8 @@ export default function CompanyDataImport() {
                                     }}
                                     className="mt-5 rounded-md px-4 py-2 text-xs font-medium"
                                     style={{
-                                        background:
-                                            'var(--accent-action)',
-                                        color:
-                                            'var(--text-inverse)',
+                                        background: 'var(--accent-action)',
+                                        color: 'var(--text-inverse)',
                                     }}
                                 >
                                     Browse files
@@ -1981,109 +2148,71 @@ export default function CompanyDataImport() {
                         accept=".csv,.json"
                         className="hidden"
                         onChange={(event) => {
-                            const file =
-                                event.target.files?.[0]
-
+                            const file = event.target.files?.[0]
                             if (file) {
                                 void handleFile(file)
                             }
-
                             event.target.value = ''
                         }}
                     />
                 </section>
 
-                {/* Preview */}
                 {activeFile && (
                     <section
                         className="mt-5 overflow-hidden rounded-xl border"
                         style={{
-                            borderColor:
-                                'var(--border-hairline)',
-                            background:
-                                'var(--bg-surface)',
+                            borderColor: 'var(--border-hairline)',
+                            background: 'var(--bg-surface)',
                         }}
                     >
                         <div
                             className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-                            style={{
-                                borderColor:
-                                    'var(--border-hairline)',
-                            }}
+                            style={{ borderColor: 'var(--border-hairline)' }}
                         >
                             <div>
                                 <h2
                                     className="text-sm font-semibold"
-                                    style={{
-                                        color:
-                                            'var(--text-primary)',
-                                    }}
+                                    style={{ color: 'var(--text-primary)' }}
                                 >
                                     Data preview
                                 </h2>
 
-                                <p
-                                    className="mt-0.5 text-xs"
-                                    style={{
-                                        color:
-                                            'var(--text-tertiary)',
-                                    }}
-                                >
-                                    Normalized records from the
-                                    selected file.
+                                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                                    Showing the first 5 normalized records.
                                 </p>
                             </div>
 
-                            {activeValidationErrors.length ===
-                                0 ? (
+                            {activeValidationErrors.length === 0 ? (
                                 <span
                                     className="inline-flex items-center gap-1.5 text-xs font-medium"
-                                    style={{
-                                        color:
-                                            'var(--status-success-text)',
-                                    }}
+                                    style={{ color: 'var(--status-success-text)' }}
                                 >
-                                    <CheckCircle2
-                                        size={14}
-                                    />
+                                    <CheckCircle2 size={14} />
                                     Validation passed
                                 </span>
                             ) : (
                                 <span
                                     className="inline-flex items-center gap-1.5 text-xs font-medium"
-                                    style={{
-                                        color:
-                                            'var(--status-warning-text)',
-                                    }}
+                                    style={{ color: 'var(--status-warning-text)' }}
                                 >
-                                    <AlertCircle
-                                        size={14}
-                                    />
+                                    <AlertCircle size={14} />
                                     Validation issues
                                 </span>
                             )}
                         </div>
 
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-162.5 text-left">
+                            <table className="w-full min-w-[900px] text-left">
                                 <thead>
                                     <tr
                                         className="border-b"
-                                        style={{
-                                            borderColor:
-                                                'var(--border-hairline)',
-                                        }}
+                                        style={{ borderColor: 'var(--border-hairline)' }}
                                     >
-                                        {Object.keys(
-                                            activeRows[0] ?? {},
-                                        ).map((key) => (
+                                        {Object.keys(activeRows[0] ?? {}).map((key) => (
                                             <th
                                                 key={key}
                                                 className="px-4 py-3 text-[11px] font-medium"
-                                                style={{
-                                                    color:
-                                                        'var(--text-tertiary)',
-                                                }}
+                                                style={{ color: 'var(--text-tertiary)' }}
                                             >
                                                 {key}
                                             </th>
@@ -2092,152 +2221,96 @@ export default function CompanyDataImport() {
                                 </thead>
 
                                 <tbody>
-                                    {activeRows
-                                        .slice(0, 5)
-                                        .map(
-                                            (row, index) => (
-                                                <tr
-                                                    key={index}
-                                                    className="border-b last:border-b-0"
-                                                    style={{
-                                                        borderColor:
-                                                            'var(--border-hairline-soft)',
-                                                    }}
+                                    {activeRows.slice(0, 5).map((row, index) => (
+                                        <tr
+                                            key={index}
+                                            className="border-b last:border-b-0"
+                                            style={{ borderColor: 'var(--border-hairline-soft)' }}
+                                        >
+                                            {Object.entries(row).map(([key, value]) => (
+                                                <td
+                                                    key={key}
+                                                    className="max-w-[260px] whitespace-nowrap px-4 py-3 text-xs"
+                                                    style={{ color: 'var(--text-secondary)' }}
                                                 >
-                                                    {Object.entries(
-                                                        row,
-                                                    ).map(
-                                                        ([
-                                                            key,
-                                                            value,
-                                                        ]) => (
-                                                            <td
-                                                                key={key}
-                                                                className="whitespace-nowrap px-4 py-3 text-xs"
-                                                                style={{
-                                                                    color:
-                                                                        'var(--text-secondary)',
-                                                                }}
-                                                            >
-                                                                {String(
-                                                                    value ??
-                                                                    '',
-                                                                )}
-                                                            </td>
-                                                        ),
-                                                    )}
-                                                </tr>
-                                            ),
-                                        )}
+                                                    {String(value ?? '')}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
                     </section>
                 )}
 
-                {/* Errors */}
-                {(error ||
-                    validationErrors.length >
-                    0) && (
-                        <section
-                            className="mt-5 rounded-xl border p-4"
-                            style={{
-                                borderColor:
-                                    'var(--status-danger-text)',
-                                background:
-                                    'var(--status-danger-bg)',
-                            }}
-                        >
-                            {error && (
-                                <div className="flex gap-2">
-                                    <AlertCircle
-                                        size={16}
-                                        className="mt-0.5 shrink-0"
-                                        style={{
-                                            color:
-                                                'var(--status-danger-text)',
-                                        }}
-                                    />
+                {(error || validationErrors.length > 0) && (
+                    <section
+                        className="mt-5 rounded-xl border p-4"
+                        style={{
+                            borderColor: 'var(--status-danger-text)',
+                            background: 'var(--status-danger-bg)',
+                        }}
+                    >
+                        {error && (
+                            <div className="flex gap-2">
+                                <AlertCircle
+                                    size={16}
+                                    className="mt-0.5 shrink-0"
+                                    style={{ color: 'var(--status-danger-text)' }}
+                                />
+                                <p
+                                    className="text-sm font-medium"
+                                    style={{ color: 'var(--status-danger-text)' }}
+                                >
+                                    {error}
+                                </p>
+                            </div>
+                        )}
 
+                        {validationErrors.length > 0 && (
+                            <div className="mt-3 space-y-1.5 pl-6">
+                                {validationErrors.map((message, index) => (
                                     <p
-                                        className="text-sm font-medium"
-                                        style={{
-                                            color:
-                                                'var(--status-danger-text)',
-                                        }}
+                                        key={`${message}-${index}`}
+                                        className="text-xs"
+                                        style={{ color: 'var(--status-danger-text)' }}
                                     >
-                                        {error}
+                                        {message}
                                     </p>
-                                </div>
-                            )}
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                )}
 
-                            {validationErrors.length >
-                                0 && (
-                                    <div className="mt-3 space-y-1.5 pl-6">
-                                        {validationErrors.map(
-                                            (
-                                                message,
-                                                index,
-                                            ) => (
-                                                <p
-                                                    key={`${message}-${index}`}
-                                                    className="text-xs"
-                                                    style={{
-                                                        color:
-                                                            'var(--status-danger-text)',
-                                                    }}
-                                                >
-                                                    {message}
-                                                </p>
-                                            ),
-                                        )}
-                                    </div>
-                                )}
-                        </section>
-                    )}
-
-                {/* Uploaded files */}
                 {uploadedFiles.length > 0 && (
                     <section
                         className="mt-5 rounded-xl border p-5"
                         style={{
-                            borderColor:
-                                'var(--border-hairline)',
-                            background:
-                                'var(--bg-surface)',
+                            borderColor: 'var(--border-hairline)',
+                            background: 'var(--bg-surface)',
                         }}
                     >
                         <div className="flex items-center justify-between gap-4">
                             <div>
                                 <h2
                                     className="text-sm font-semibold"
-                                    style={{
-                                        color:
-                                            'var(--text-primary)',
-                                    }}
+                                    style={{ color: 'var(--text-primary)' }}
                                 >
                                     Ready for import
                                 </h2>
 
-                                <p
-                                    className="mt-0.5 text-xs"
-                                    style={{
-                                        color:
-                                            'var(--text-tertiary)',
-                                    }}
-                                >
-                                    Review the datasets before
-                                    starting the analysis.
+                                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                                    Review the datasets before starting the analysis.
                                 </p>
                             </div>
 
                             <span
                                 className="rounded-full px-2.5 py-1 text-[11px] font-medium"
                                 style={{
-                                    background:
-                                        'var(--bg-surface-raised)',
-                                    color:
-                                        'var(--text-secondary)',
+                                    background: 'var(--bg-surface-raised)',
+                                    color: 'var(--text-secondary)',
                                 }}
                             >
                                 {totalRecords} records
@@ -2245,147 +2318,82 @@ export default function CompanyDataImport() {
                         </div>
 
                         <div className="mt-4 space-y-2">
-                            {uploadedFiles.map(
-                                (item) => (
-                                    <div
-                                        key={item.type}
-                                        className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
-                                        style={{
-                                            borderColor:
-                                                'var(--border-hairline-soft)',
-                                        }}
-                                    >
-                                        <div className="flex min-w-0 items-center gap-3">
-                                            <div
-                                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md"
-                                                style={{
-                                                    background:
-                                                        'var(--bg-surface-raised)',
-                                                    color:
-                                                        'var(--text-secondary)',
-                                                }}
-                                            >
-                                                <FileIcon
-                                                    fileName={
-                                                        item.file.name
-                                                    }
-                                                />
-                                            </div>
-
-                                            <div className="min-w-0">
-                                                <p
-                                                    className="truncate text-sm font-medium"
-                                                    style={{
-                                                        color:
-                                                            'var(--text-primary)',
-                                                    }}
-                                                >
-                                                    {
-                                                        item.file
-                                                            .name
-                                                    }
-                                                </p>
-
-                                                <p
-                                                    className="mt-0.5 text-[11px]"
-                                                    style={{
-                                                        color:
-                                                            'var(--text-tertiary)',
-                                                    }}
-                                                >
-                                                    {
-                                                        item.rows
-                                                            .length
-                                                    }{' '}
-                                                    records
-                                                </p>
-                                            </div>
+                            {uploadedFiles.map((item) => (
+                                <div
+                                    key={item.type}
+                                    className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
+                                    style={{ borderColor: 'var(--border-hairline-soft)' }}
+                                >
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <div
+                                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md"
+                                            style={{
+                                                background: 'var(--bg-surface-raised)',
+                                                color: 'var(--text-secondary)',
+                                            }}
+                                        >
+                                            <FileIcon fileName={item.file.name} />
                                         </div>
 
-                                        <div className="flex shrink-0 items-center gap-3">
-                                            <span
-                                                className="hidden text-xs sm:block"
-                                                style={{
-                                                    color:
-                                                        'var(--text-secondary)',
-                                                }}
+                                        <div className="min-w-0">
+                                            <p
+                                                className="truncate text-sm font-medium"
+                                                style={{ color: 'var(--text-primary)' }}
                                             >
-                                                {
-                                                    DATA_TYPES.find(
-                                                        (
-                                                            type,
-                                                        ) =>
-                                                            type.value ===
-                                                            item.type,
-                                                    )?.label
-                                                }
-                                            </span>
+                                                {item.file.name}
+                                            </p>
 
-                                            <CheckCircle2
-                                                size={16}
-                                                style={{
-                                                    color:
-                                                        'var(--status-success-text)',
-                                                }}
-                                            />
-
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    removeFile(
-                                                        item.type,
-                                                    )
-                                                }
-                                                aria-label={`Remove ${item.file.name}`}
-                                                style={{
-                                                    color:
-                                                        'var(--text-tertiary)',
-                                                }}
+                                            <p
+                                                className="mt-0.5 text-[11px]"
+                                                style={{ color: 'var(--text-tertiary)' }}
                                             >
-                                                <X size={15} />
-                                            </button>
+                                                {item.rows.length} records
+                                            </p>
                                         </div>
                                     </div>
-                                ),
-                            )}
+
+                                    <div className="flex shrink-0 items-center gap-3">
+                                        <span
+                                            className="hidden text-xs sm:block"
+                                            style={{ color: 'var(--text-secondary)' }}
+                                        >
+                                            {DATA_TYPES.find((type) => type.value === item.type)?.label}
+                                        </span>
+
+                                        <CheckCircle2
+                                            size={16}
+                                            style={{ color: 'var(--status-success-text)' }}
+                                        />
+
+                                        <button
+                                            type="button"
+                                            onClick={() => removeFile(item.type)}
+                                            aria-label={`Remove ${item.file.name}`}
+                                            style={{ color: 'var(--text-tertiary)' }}
+                                        >
+                                            <X size={15} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </section>
                 )}
 
-                {/* Bottom action */}
                 <div className="mt-6 flex flex-col items-end gap-2 pb-8">
                     <button
                         type="button"
-                        onClick={() =>
-                            void importData()
-                        }
-                        disabled={
-                            processing ||
-                            uploadedFiles.length ===
-                            0 ||
-                            allLocalErrors.length > 0
-                        }
+                        onClick={() => void importData()}
+                        disabled={processing || uploadedFiles.length === 0 || allLocalErrors.length > 0}
                         className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-                        style={{
-                            background:
-                                'var(--accent-action)',
-                            color:
-                                'var(--text-inverse)',
-                        }}
+                        style={{ background: 'var(--accent-action)', color: 'var(--text-inverse)' }}
                     >
                         Import and analyze
                         <ArrowRight size={16} />
                     </button>
 
-                    <p
-                        className="text-[11px]"
-                        style={{
-                            color:
-                                'var(--text-tertiary)',
-                        }}
-                    >
-                        Data is validated before the
-                        database import.
+                    <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                        Data is validated before the database import.
                     </p>
                 </div>
             </div>
@@ -2405,42 +2413,20 @@ function SummaryCard({
     return (
         <div
             className="rounded-xl border p-4"
-            style={{
-                borderColor:
-                    'var(--border-hairline)',
-                background:
-                    'var(--bg-surface)',
-            }}
+            style={{ borderColor: 'var(--border-hairline)', background: 'var(--bg-surface)' }}
         >
             <div
                 className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg"
-                style={{
-                    background:
-                        'var(--bg-surface-raised)',
-                    color:
-                        'var(--text-secondary)',
-                }}
+                style={{ background: 'var(--bg-surface-raised)', color: 'var(--text-secondary)' }}
             >
                 {icon}
             </div>
 
-            <p
-                className="mt-3 text-2xl font-semibold"
-                style={{
-                    color:
-                        'var(--text-primary)',
-                }}
-            >
+            <p className="mt-3 text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {value}
             </p>
 
-            <p
-                className="mt-1 text-xs"
-                style={{
-                    color:
-                        'var(--text-tertiary)',
-                }}
-            >
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
                 {label}
             </p>
         </div>
