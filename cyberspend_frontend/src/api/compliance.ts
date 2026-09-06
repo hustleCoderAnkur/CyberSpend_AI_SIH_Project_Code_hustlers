@@ -6,5 +6,5 @@ export interface ComplianceMapping {
 }
 
 export function getComplianceMappings() {
-    return apiFetch<ComplianceMapping[]>('/compliance')
+    return apiFetch<ComplianceMapping[]>('/api/compliance')
 }

@@ -11,13 +11,13 @@ export interface Vulnerability {
 }
 
 export function getVulnerabilities() {
-    return apiFetch<Vulnerability[]>('/vulnerabilities')
+    return apiFetch<Vulnerability[]>('/api/vulnerabilities')
 }
 
 export function createVulnerability(
     vulnerability: Omit<Vulnerability, 'discoveredOn'>,
 ) {
-    return apiFetch<Vulnerability>('/vulnerabilities', {
+    return apiFetch<Vulnerability>('/api/vulnerabilities', {
         method: 'POST',
         body: JSON.stringify(vulnerability),
     })
@@ -30,7 +30,7 @@ export function updateVulnerability(
     >,
 ) {
     return apiFetch<Vulnerability>(
-        `/vulnerabilities/${id}`,
+        `/api/vulnerabilities/${id}`,
         {
             method: 'PUT',
             body: JSON.stringify(vulnerability),
@@ -40,7 +40,7 @@ export function updateVulnerability(
 
 export async function deleteVulnerability(id: string) {
     const response = await fetch(
-        `${import.meta.env.API_URL}/vulnerabilities/${id}`,
+        `${import.meta.env.API_URL}/api/vulnerabilities/${id}`,
         {
             method: 'DELETE',
         },
