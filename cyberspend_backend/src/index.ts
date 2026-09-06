@@ -19,7 +19,7 @@ app.use(cors({ origin: CORS_ORIGIN }))
 app.use(
   express.urlencoded({
     extended: true,
-    limit: '10mb',
+    limit: '25mb',
   }),
 )
 

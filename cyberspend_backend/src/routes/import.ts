@@ -585,7 +585,20 @@ importRouter.post(
     '/insider-threat/validate',
     async (req, res) => {
         try {
-            if (!Array.isArray(req.body)) {
+            const rawData =
+                Array.isArray(req.body)
+                    ? req.body
+                    : Array.isArray(req.body?.data)
+                        ? req.body.data
+                        : Array.isArray(req.body?.rows)
+                            ? req.body.rows
+                            : Array.isArray(
+                                req.body?.insiderThreat,
+                            )
+                                ? req.body.insiderThreat
+                                : null
+
+            if (!rawData) {
                 return res.status(400).json({
                     valid: false,
                     totalRows: 0,
@@ -601,7 +614,7 @@ importRouter.post(
             }
 
             const rows =
-                req.body as Record<
+                rawData as Record<
                     string,
                     unknown
                 >[]
@@ -653,7 +666,20 @@ importRouter.post(
     '/insider-threat',
     async (req, res) => {
         try {
-            if (!Array.isArray(req.body)) {
+            const rawData =
+                Array.isArray(req.body)
+                    ? req.body
+                    : Array.isArray(req.body?.data)
+                        ? req.body.data
+                        : Array.isArray(req.body?.rows)
+                            ? req.body.rows
+                            : Array.isArray(
+                                req.body?.insiderThreat,
+                            )
+                                ? req.body.insiderThreat
+                                : null
+
+            if (!rawData) {
                 return res.status(400).json({
                     success: false,
                     error:
@@ -662,7 +688,7 @@ importRouter.post(
             }
 
             const rawRows =
-                req.body as Record<
+                rawData as Record<
                     string,
                     unknown
                 >[]
