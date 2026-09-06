@@ -12,23 +12,26 @@ export default function Placeholder({
       className="min-h-screen"
       style={{ background: 'var(--bg-base)' }}
     >
-      <div className="mx-auto w-full max-w-7xl px-6 py-7 lg:px-8">
-        {/* Header */}
-        <header>
+      <main className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-7 lg:px-8">
+        {/* Page header */}
+        <header className="mb-8">
+          <p
+            className="font-data text-[10px] font-semibold uppercase tracking-[0.14em]"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            Security intelligence
+          </p>
+
           <h1
-            className="text-xl font-semibold tracking-tight"
-            style={{
-              color: 'var(--text-primary)',
-            }}
+            className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl"
+            style={{ color: 'var(--text-primary)' }}
           >
             {title}
           </h1>
 
           <p
-            className="mt-1 text-sm"
-            style={{
-              color: 'var(--text-secondary)',
-            }}
+            className="mt-3 max-w-2xl text-sm leading-6"
+            style={{ color: 'var(--text-secondary)' }}
           >
             {description}
           </p>
@@ -36,49 +39,55 @@ export default function Placeholder({
 
         {/* Placeholder */}
         <section
-          className="mt-6 flex min-h-70 items-center justify-center rounded-lg border border-dashed"
-          style={{
-            borderColor:
-              'var(--border-hairline)',
-            background: 'var(--bg-surface)',
-          }}
+          className="panel flex min-h-[360px] items-center justify-center"
         >
-          <div className="text-center">
+          <div className="px-6 py-12 text-center">
             <div
-              className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border"
+              className="mx-auto flex h-14 w-14 items-center justify-center border-2"
               style={{
-                borderColor:
-                  'var(--border-hairline)',
-                background:
-                  'var(--bg-base)',
-                color:
-                  'var(--text-tertiary)',
-              }}
-            >
-              <span className="text-sm">—</span>
-            </div>
-
-            <p
-              className="mt-3 text-[13px] font-medium"
-              style={{
+                borderColor: 'var(--border-strong)',
+                background: 'var(--bg-base)',
                 color: 'var(--text-secondary)',
               }}
             >
-              Coming soon
-            </p>
+              <span
+                className="font-data text-lg font-semibold"
+                aria-hidden="true"
+              >
+                —
+              </span>
+            </div>
 
-            <p
-              className="mt-1 text-[11px]"
-              style={{
-                color: 'var(--text-tertiary)',
-              }}
-            >
-              This section is not available in the
-              current prototype.
-            </p>
+            <div className="mt-6">
+              <span
+                className="inline-flex border px-2.5 py-1 font-data text-[10px] font-semibold uppercase tracking-[0.08em]"
+                style={{
+                  borderColor: 'var(--border-hairline)',
+                  background: 'var(--bg-surface-raised)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                Prototype
+              </span>
+
+              <h2
+                className="mt-4 text-base font-extrabold"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                Coming soon
+              </h2>
+
+              <p
+                className="mx-auto mt-2 max-w-md text-xs leading-5"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                This section is not available in the current
+                prototype.
+              </p>
+            </div>
           </div>
         </section>
-      </div>
+      </main>
     </div>
   )
 }

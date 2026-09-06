@@ -880,7 +880,7 @@ function ProcessingIcon({
     if (state === 'complete') {
         return (
             <div
-                className="flex h-6 w-6 items-center justify-center rounded-full"
+                className="flex h-7 w-7 items-center justify-center border"
                 style={{
                     background: 'var(--status-success-bg)',
                     color: 'var(--status-success-text)',
@@ -894,7 +894,7 @@ function ProcessingIcon({
     if (state === 'active') {
         return (
             <div
-                className="flex h-6 w-6 items-center justify-center rounded-full"
+                className="flex h-7 w-7 items-center justify-center border"
                 style={{
                     background: 'var(--bg-surface-raised)',
                     color: 'var(--text-primary)',
@@ -907,7 +907,7 @@ function ProcessingIcon({
 
     return (
         <div
-            className="h-6 w-6 rounded-full border"
+            className="h-7 w-7 border-2"
             style={{ borderColor: 'var(--border-hairline)' }}
         />
     )
@@ -924,14 +924,14 @@ function SummaryCard({
 }) {
     return (
         <div
-            className="rounded-xl border p-4 text-center"
+            className="panel-soft p-4 text-center"
             style={{
                 borderColor: 'var(--border-hairline)',
                 background: 'var(--bg-surface)',
             }}
         >
             <div
-                className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg"
+                className="mx-auto flex h-9 w-9 items-center justify-center border"
                 style={{
                     background: 'var(--bg-surface-raised)',
                     color: 'var(--text-secondary)',
@@ -1240,14 +1240,14 @@ export default function CompanyDataImport() {
     if (processing) {
         return (
             <div
-                className="min-h-screen px-5 py-10"
+                className="min-h-screen px-5 py-8 sm:px-7 lg:px-8"
                 style={{ background: 'var(--bg-base)' }}
             >
-                <div className="mx-auto flex min-h-[80vh] max-w-xl items-center">
+                <div className="mx-auto flex min-h-[78vh] max-w-2xl items-center">
                     <div className="w-full">
                         <div className="text-center">
                             <div
-                                className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border"
+                                className="mx-auto flex h-14 w-14 items-center justify-center border-2"
                                 style={{
                                     borderColor: 'var(--border-hairline)',
                                     background: 'var(--bg-surface)',
@@ -1261,7 +1261,7 @@ export default function CompanyDataImport() {
                             </div>
 
                             <h1
-                                className="mt-6 text-2xl font-semibold tracking-tight"
+                                className="mt-6 text-2xl font-extrabold tracking-tight sm:text-3xl"
                                 style={{ color: 'var(--text-primary)' }}
                             >
                                 Processing Security Data
@@ -1277,13 +1277,13 @@ export default function CompanyDataImport() {
                         </div>
 
                         <div
-                            className="mt-8 rounded-xl border p-5"
+                            className="panel mt-8 p-5 sm:p-6"
                             style={{
                                 borderColor: 'var(--border-hairline)',
                                 background: 'var(--bg-surface)',
                             }}
                         >
-                            <div className="space-y-5">
+                            <div className="space-y-4">
                                 {PROCESSING_STEPS.map((step) => (
                                     <div key={step.id} className="flex gap-3">
                                         <ProcessingIcon
@@ -1330,13 +1330,13 @@ export default function CompanyDataImport() {
     if (completed) {
         return (
             <div
-                className="min-h-screen px-5 py-10"
+                className="min-h-screen px-5 py-8 sm:px-7 lg:px-8"
                 style={{ background: 'var(--bg-base)' }}
             >
-                <div className="mx-auto flex min-h-[80vh] max-w-2xl items-center justify-center">
+                <div className="mx-auto flex min-h-[78vh] max-w-3xl items-center justify-center">
                     <div className="w-full text-center">
                         <div
-                            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full"
+                            className="mx-auto flex h-16 w-16 items-center justify-center border-2"
                             style={{
                                 background: 'var(--status-success-bg)',
                                 color: 'var(--status-success-text)',
@@ -1353,7 +1353,7 @@ export default function CompanyDataImport() {
                         </p>
 
                         <h1
-                            className="mt-2 text-3xl font-semibold tracking-tight"
+                            className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl"
                             style={{ color: 'var(--text-primary)' }}
                         >
                             Security environment ready
@@ -1396,6 +1396,7 @@ export default function CompanyDataImport() {
                             style={{
                                 background: 'var(--accent-action)',
                                 color: 'var(--text-inverse)',
+                                borderColor: 'var(--border-strong)',
                             }}
                         >
                             Open Dashboard
@@ -1428,6 +1429,7 @@ export default function CompanyDataImport() {
                             style={{
                                 background: 'var(--accent-action)',
                                 color: 'var(--text-inverse)',
+                                borderColor: 'var(--border-strong)',
                             }}
                         >
                             <Database size={16} />
@@ -1441,9 +1443,9 @@ export default function CompanyDataImport() {
                         </span>
                     </div>
 
-                    <div className="mt-9">
+                    <div className="mt-10">
                         <h1
-                            className="text-3xl font-semibold tracking-tight md:text-4xl"
+                            className="text-3xl font-extrabold tracking-tight md:text-4xl"
                             style={{ color: 'var(--text-primary)' }}
                         >
                             Import security data
@@ -1639,7 +1641,7 @@ export default function CompanyDataImport() {
                                             event.stopPropagation()
                                             openFilePicker()
                                         }}
-                                        className="rounded-md border px-3 py-2 text-xs font-medium"
+                                        className="border-2 px-3 py-2 text-xs font-bold"
                                         style={{
                                             borderColor: 'var(--border-hairline)',
                                             background: 'var(--bg-surface)',
@@ -1655,7 +1657,7 @@ export default function CompanyDataImport() {
                                             event.stopPropagation()
                                             removeFile(activeType)
                                         }}
-                                        className="rounded-md border px-3 py-2 text-xs font-medium"
+                                        className="border-2 px-3 py-2 text-xs font-bold"
                                         style={{
                                             borderColor: 'var(--border-hairline)',
                                             background: 'var(--bg-surface)',
@@ -1849,7 +1851,7 @@ export default function CompanyDataImport() {
                             </div>
 
                             <span
-                                className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+                                className="border px-2.5 py-1 font-data text-[10px] font-bold uppercase tracking-wide"
                                 style={{
                                     background: 'var(--bg-surface-raised)',
                                     color: 'var(--text-secondary)',

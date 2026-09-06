@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import {
-    Wallet,
     Calculator,
-    ShieldCheck,
-    TrendingDown,
+    CheckCircle2,
     IndianRupee,
     RefreshCw,
+    ShieldCheck,
+    TrendingDown,
+    Wallet,
 } from 'lucide-react'
 
 import { optimizeInvestment } from '../api/optimizer'
@@ -27,23 +28,72 @@ function getRosiStyle(rosi: number) {
     }
 }
 
+function SummaryCard({
+    label,
+    value,
+    helper,
+    icon,
+    valueClassName = '',
+}: {
+    label: string
+    value: string
+    helper?: ReactNode
+    icon: ReactNode
+    valueClassName?: string
+}) {
+    return (
+        <article className="panel-soft min-w-0 p-5">
+            <div className="flex items-start justify-between gap-3">
+                <span
+                    className="text-xs font-semibold uppercase tracking-[0.08em]"
+                    style={{ color: 'var(--text-tertiary)' }}
+                >
+                    {label}
+                </span>
+
+                <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center border"
+                    style={{
+                        borderColor: 'var(--border-hairline)',
+                        background: 'var(--bg-base)',
+                        color: 'var(--text-secondary)',
+                    }}
+                >
+                    {icon}
+                </span>
+            </div>
+
+            <div
+                className={`stat-value mt-5 text-2xl leading-none ${valueClassName}`}
+                style={{ color: 'var(--text-primary)' }}
+            >
+                {value}
+            </div>
+
+            {helper && (
+                <div
+                    className="mt-3 text-xs leading-5"
+                    style={{ color: 'var(--text-tertiary)' }}
+                >
+                    {helper}
+                </div>
+            )}
+        </article>
+    )
+}
+
 export default function Optimizer() {
     const [budget, setBudget] = useState('5000000')
-    const [result, setResult] =
-        useState<OptimizerResult | null>(null)
-
+    const [result, setResult] = useState<OptimizerResult | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
-    async function handleOptimize(event: FormEvent) {
+    async function handleOptimize(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
 
         const numericBudget = Number(budget)
 
-        if (
-            !Number.isFinite(numericBudget) ||
-            numericBudget <= 0
-        ) {
+        if (!Number.isFinite(numericBudget) || numericBudget <= 0) {
             setError('Please enter a valid budget greater than 0.')
             return
         }
@@ -52,9 +102,7 @@ export default function Optimizer() {
             setLoading(true)
             setError('')
 
-            const data =
-                await optimizeInvestment(numericBudget)
-
+            const data = await optimizeInvestment(numericBudget)
             setResult(data)
         } catch (err) {
             console.error(err)
@@ -71,114 +119,130 @@ export default function Optimizer() {
         : 0
 
     const estimatedSavings = result
-        ? result.estimatedAnnualLoss *
-        result.totalRiskReductionPct
+        ? result.estimatedAnnualLoss * result.totalRiskReductionPct
         : 0
+
+    const boundedReduction = Math.min(
+        Math.max(riskReductionPercent, 0),
+        100,
+    )
 
     return (
         <div
             className="min-h-screen"
             style={{ background: 'var(--bg-base)' }}
         >
-            <div className="mx-auto w-full max-w-7xl px-6 py-7 lg:px-8">
-                {/* Header */}
-                <header>
-                    <div className="flex items-center gap-2">
-                        <Wallet
-                            size={18}
-                            strokeWidth={1.8}
+            <main className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-7 lg:px-8">
+                {/* Page header */}
+                <header className="mb-8">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <span
+                            className="flex h-9 w-9 items-center justify-center border-2"
                             style={{
-                                color: 'var(--text-primary)',
-                            }}
-                        />
-
-                        <h1
-                            className="text-xl font-semibold tracking-tight"
-                            style={{
+                                borderColor: 'var(--border-strong)',
+                                background: 'var(--bg-surface)',
                                 color: 'var(--text-primary)',
                             }}
                         >
-                            Investment Optimizer
-                        </h1>
+                            <Wallet size={17} strokeWidth={2} />
+                        </span>
+
+                        <div>
+                            <p
+                                className="font-data text-[10px] font-semibold uppercase tracking-[0.14em]"
+                                style={{ color: 'var(--text-tertiary)' }}
+                            >
+                                Security investment
+                            </p>
+
+                            <h1
+                                className="mt-0.5 text-2xl font-extrabold tracking-tight sm:text-3xl"
+                                style={{ color: 'var(--text-primary)' }}
+                            >
+                                Investment Optimizer
+                            </h1>
+                        </div>
                     </div>
 
                     <p
-                        className="mt-1 text-sm"
-                        style={{
-                            color: 'var(--text-secondary)',
-                        }}
+                        className="mt-3 max-w-2xl text-sm leading-6"
+                        style={{ color: 'var(--text-secondary)' }}
                     >
-                        Find the best combination of security controls
-                        within a fixed budget.
+                        Find the strongest combination of security controls
+                        within a fixed investment budget.
                     </p>
                 </header>
 
-                {/* Budget input */}
-                <section
-                    className="mt-6 rounded-lg border"
-                    style={{
-                        borderColor: 'var(--border-hairline)',
-                        background: 'var(--bg-surface)',
-                        boxShadow: 'var(--shadow-sm)',
-                    }}
-                >
+                {/* Budget configuration */}
+                <section className="panel overflow-hidden">
                     <div
-                        className="border-b px-5 py-4"
+                        className="flex flex-col gap-3 border-b-2 px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
                         style={{
-                            borderColor:
-                                'var(--border-hairline-soft)',
+                            borderColor: 'var(--border-strong)',
+                            background: 'var(--bg-surface)',
                         }}
                     >
-                        <div className="flex items-center gap-2">
-                            <Calculator
-                                size={15}
+                        <div className="flex items-start gap-3">
+                            <span
+                                className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border"
                                 style={{
-                                    color: 'var(--text-tertiary)',
-                                }}
-                            />
-
-                            <h2
-                                className="text-sm font-semibold"
-                                style={{
-                                    color: 'var(--text-primary)',
+                                    borderColor: 'var(--border-hairline)',
+                                    background: 'var(--bg-base)',
+                                    color: 'var(--text-secondary)',
                                 }}
                             >
-                                Set Investment Budget
-                            </h2>
+                                <Calculator size={15} />
+                            </span>
+
+                            <div>
+                                <h2
+                                    className="text-sm font-bold"
+                                    style={{ color: 'var(--text-primary)' }}
+                                >
+                                    Set investment budget
+                                </h2>
+
+                                <p
+                                    className="mt-1 text-xs leading-5"
+                                    style={{ color: 'var(--text-tertiary)' }}
+                                >
+                                    The optimizer selects controls that
+                                    maximize risk reduction within this limit.
+                                </p>
+                            </div>
                         </div>
 
-                        <p
-                            className="mt-1 text-[11px]"
+                        <span
+                            className="self-start border px-2.5 py-1 font-data text-[10px] font-semibold uppercase tracking-wide"
                             style={{
-                                color: 'var(--text-tertiary)',
+                                borderColor: 'var(--border-hairline)',
+                                background: 'var(--bg-base)',
+                                color: 'var(--text-secondary)',
                             }}
                         >
-                            The optimizer will select controls that provide
-                            the best risk reduction within this limit.
-                        </p>
+                            Optimization engine
+                        </span>
                     </div>
 
                     <form
                         onSubmit={handleOptimize}
-                        className="flex flex-col gap-4 p-5 md:flex-row md:items-end"
+                        className="grid gap-5 p-5 md:grid-cols-[1fr_auto] md:items-end"
                     >
-                        <div className="min-w-0 flex-1">
+                        <div>
                             <label
                                 htmlFor="investment-budget"
-                                className="mb-1.5 block text-[12px] font-medium"
-                                style={{
-                                    color: 'var(--text-secondary)',
-                                }}
+                                className="mb-2 block text-xs font-bold"
+                                style={{ color: 'var(--text-primary)' }}
                             >
                                 Security Investment Budget
                             </label>
 
                             <div className="relative">
                                 <IndianRupee
-                                    size={15}
+                                    size={16}
                                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
                                     style={{
-                                        color: 'var(--text-tertiary)',
+                                        color: 'var(--text-secondary)',
                                     }}
                                 />
 
@@ -192,82 +256,77 @@ export default function Optimizer() {
                                         setBudget(event.target.value)
                                     }
                                     placeholder="5000000"
-                                    className="font-data w-full rounded-md border py-2.5 pl-9 pr-3 text-[13px] outline-none transition-colors"
+                                    aria-describedby="budget-help"
+                                    className="font-data w-full border-2 py-3 pl-10 pr-3 text-sm outline-none transition-colors"
                                     style={{
-                                        borderColor:
-                                            'var(--border-hairline)',
+                                        borderColor: 'var(--border-strong)',
                                         background: 'var(--bg-surface)',
                                         color: 'var(--text-primary)',
                                     }}
                                     onFocus={(event) => {
-                                        event.currentTarget.style.borderColor =
-                                            '#A1A1AA'
+                                        event.currentTarget.style.background =
+                                            'var(--bg-surface-hover)'
                                     }}
                                     onBlur={(event) => {
-                                        event.currentTarget.style.borderColor =
-                                            'var(--border-hairline)'
+                                        event.currentTarget.style.background =
+                                            'var(--bg-surface)'
                                     }}
                                 />
                             </div>
 
                             <p
-                                className="mt-1.5 text-[11px]"
-                                style={{
-                                    color: 'var(--text-tertiary)',
-                                }}
+                                id="budget-help"
+                                className="mt-2 text-xs"
+                                style={{ color: 'var(--text-tertiary)' }}
                             >
-                                Enter the maximum amount available for
-                                security investment.
+                                Maximum amount available for security
+                                investment.
                             </p>
                         </div>
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className="inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5 text-[13px] font-medium transition-colors"
+                            className="inline-flex min-h-11 items-center justify-center gap-2 border-2 px-5 text-sm font-bold transition-all"
                             style={{
+                                borderColor: 'var(--border-strong)',
                                 background: loading
                                     ? 'var(--bg-surface-raised)'
                                     : 'var(--accent-action)',
                                 color: loading
                                     ? 'var(--text-tertiary)'
                                     : 'var(--text-inverse)',
+                                cursor: loading ? 'wait' : 'pointer',
                             }}
                         >
                             {loading ? (
                                 <RefreshCw
-                                    size={15}
+                                    size={16}
                                     className="animate-spin"
                                 />
                             ) : (
-                                <Calculator size={15} />
+                                <Calculator size={16} />
                             )}
 
-                            {loading
-                                ? 'Optimizing...'
-                                : 'Optimize Investment'}
+                            {loading ? 'Optimizing...' : 'Optimize Investment'}
                         </button>
                     </form>
 
                     {error && (
-                        <div className="px-5 pb-5">
+                        <div className="border-t-2 p-5" style={{ borderColor: 'var(--border-strong)' }}>
                             <div
-                                className="flex items-start gap-3 rounded-md border px-4 py-3"
+                                className="flex items-start gap-3 border px-4 py-3"
                                 style={{
                                     borderColor: '#FECACA',
-                                    background:
-                                        'var(--status-danger-bg)',
+                                    background: 'var(--status-danger-bg)',
+                                    color: 'var(--status-danger-text)',
                                 }}
+                                role="alert"
                             >
-                                <span
-                                    className="text-[13px]"
-                                    style={{
-                                        color:
-                                            'var(--status-danger-text)',
-                                    }}
-                                >
-                                    {error}
+                                <span className="text-sm font-semibold">
+                                    Optimization failed.
                                 </span>
+                                <span className="text-sm">{error}</span>
                             </div>
                         </div>
                     )}
@@ -275,419 +334,258 @@ export default function Optimizer() {
 
                 {/* Results */}
                 {result && (
-                    <>
-                        {/* Summary */}
-                        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                            {/* Current EAL */}
-                            <div
-                                className="rounded-lg border p-4"
-                                style={{
-                                    borderColor:
-                                        'var(--border-hairline)',
-                                    background: 'var(--bg-surface)',
-                                    boxShadow: 'var(--shadow-sm)',
-                                }}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span
-                                        className="text-[12px] font-medium"
-                                        style={{
-                                            color:
-                                                'var(--text-secondary)',
-                                        }}
-                                    >
-                                        Current Annual Loss
-                                    </span>
-
-                                    <TrendingDown
-                                        size={15}
-                                        style={{
-                                            color:
-                                                'var(--text-tertiary)',
-                                        }}
-                                    />
-                                </div>
-
-                                <div
-                                    className="font-data mt-4 text-2xl font-medium leading-none"
-                                    style={{
-                                        color: 'var(--text-primary)',
-                                    }}
-                                >
-                                    {formatINR(
-                                        result.estimatedAnnualLoss,
-                                    )}
-                                </div>
-
+                    <section className="mt-8">
+                        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                            <div>
                                 <p
-                                    className="mt-2 text-[11px]"
-                                    style={{
-                                        color:
-                                            'var(--text-tertiary)',
-                                    }}
+                                    className="font-data text-[10px] font-semibold uppercase tracking-[0.12em]"
+                                    style={{ color: 'var(--text-tertiary)' }}
                                 >
-                                    Estimated annual risk exposure
+                                    Optimization result
                                 </p>
+                                <h2
+                                    className="mt-1 text-lg font-extrabold"
+                                    style={{ color: 'var(--text-primary)' }}
+                                >
+                                    Recommended security investment
+                                </h2>
                             </div>
 
-                            {/* Recommended investment */}
                             <div
-                                className="rounded-lg border p-4"
+                                className="flex items-center gap-2 border px-3 py-2 text-xs font-semibold"
                                 style={{
-                                    borderColor:
-                                        'var(--border-hairline)',
+                                    borderColor: 'var(--border-hairline)',
                                     background: 'var(--bg-surface)',
-                                    boxShadow: 'var(--shadow-sm)',
+                                    color: 'var(--status-success-text)',
                                 }}
                             >
-                                <div className="flex items-center justify-between">
-                                    <span
-                                        className="text-[12px] font-medium"
-                                        style={{
-                                            color:
-                                                'var(--text-secondary)',
-                                        }}
-                                    >
-                                        Recommended Investment
-                                    </span>
-
-                                    <Wallet
-                                        size={15}
-                                        style={{
-                                            color:
-                                                'var(--text-tertiary)',
-                                        }}
-                                    />
-                                </div>
-
-                                <div
-                                    className="font-data mt-4 text-2xl font-medium leading-none"
-                                    style={{
-                                        color: 'var(--text-primary)',
-                                    }}
-                                >
-                                    {formatINR(result.totalCost)}
-                                </div>
-
-                                <p
-                                    className="mt-2 text-[11px]"
-                                    style={{
-                                        color:
-                                            'var(--text-tertiary)',
-                                    }}
-                                >
-                                    {formatINR(
-                                        result.remainingBudget,
-                                    )}{' '}
-                                    remaining
-                                </p>
+                                <CheckCircle2 size={14} />
+                                Calculation complete
                             </div>
+                        </div>
 
-                            {/* Risk reduction */}
-                            <div
-                                className="rounded-lg border p-4"
-                                style={{
-                                    borderColor:
-                                        'var(--border-hairline)',
-                                    background: 'var(--bg-surface)',
-                                    boxShadow: 'var(--shadow-sm)',
-                                }}
-                            >
-                                <div className="flex items-center justify-between">
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                            <SummaryCard
+                                label="Current annual loss"
+                                value={formatINR(result.estimatedAnnualLoss)}
+                                helper="Estimated annual risk exposure"
+                                icon={<TrendingDown size={15} />}
+                            />
+
+                            <SummaryCard
+                                label="Recommended investment"
+                                value={formatINR(result.totalCost)}
+                                helper={`${formatINR(result.remainingBudget)} remaining`}
+                                icon={<Wallet size={15} />}
+                            />
+
+                            <SummaryCard
+                                label="Risk reduction"
+                                value={`${riskReductionPercent.toFixed(1)}%`}
+                                helper="Combined control effectiveness"
+                                icon={<ShieldCheck size={15} />}
+                                valueClassName="!text-[var(--risk-safe)]"
+                            />
+
+                            <SummaryCard
+                                label="Risk value protected"
+                                value={formatINR(estimatedSavings)}
+                                helper="Estimated annual loss avoided"
+                                icon={<TrendingDown size={15} />}
+                                valueClassName="!text-[var(--risk-safe)]"
+                            />
+
+                            <SummaryCard
+                                label="ROSI"
+                                value={`${(result.rosi * 100).toFixed(1)}%`}
+                                helper={
                                     <span
-                                        className="text-[12px] font-medium"
+                                        className="inline-flex border px-2 py-1 text-[10px] font-bold"
+                                        style={getRosiStyle(result.rosi)}
+                                    >
+                                        {result.rosi >= 0
+                                            ? 'Positive return'
+                                            : 'Negative return'}
+                                    </span>
+                                }
+                                icon={<Calculator size={15} />}
+                                valueClassName={
+                                    result.rosi >= 0
+                                        ? '!text-[var(--risk-safe)]'
+                                        : '!text-[var(--risk-critical)]'
+                                }
+                            />
+                        </div>
+
+                        {/* Risk reduction visual */}
+                        <div className="panel-soft mt-4 p-5">
+                            <div className="flex flex-wrap items-end justify-between gap-4">
+                                <div>
+                                    <p
+                                        className="text-xs font-bold"
                                         style={{
-                                            color:
-                                                'var(--text-secondary)',
+                                            color: 'var(--text-primary)',
                                         }}
                                     >
-                                        Risk Reduction
-                                    </span>
-
-                                    <ShieldCheck
-                                        size={15}
+                                        Portfolio risk reduction
+                                    </p>
+                                    <p
+                                        className="mt-1 text-xs"
                                         style={{
-                                            color:
-                                                'var(--text-tertiary)',
-                                        }}
-                                    />
-                                </div>
-
-                                <div
-                                    className="font-data mt-4 text-2xl font-medium leading-none"
-                                    style={{
-                                        color: 'var(--risk-safe)',
-                                    }}
-                                >
-                                    {riskReductionPercent.toFixed(1)}%
-                                </div>
-
-                                <div
-                                    className="mt-3 h-1.5 overflow-hidden rounded-full"
-                                    style={{
-                                        background:
-                                            'var(--bg-surface-raised)',
-                                    }}
-                                >
-                                    <div
-                                        className="h-full rounded-full"
-                                        style={{
-                                            width: `${Math.min(
-                                                Math.max(
-                                                    riskReductionPercent,
-                                                    0,
-                                                ),
-                                                100,
-                                            )}%`,
-                                            background:
-                                                'var(--risk-safe)',
-                                        }}
-                                    />
-                                </div>
-
-                                <p
-                                    className="mt-2 text-[11px]"
-                                    style={{
-                                        color:
-                                            'var(--text-tertiary)',
-                                    }}
-                                >
-                                    Combined control effectiveness
-                                </p>
-                            </div>
-
-                            {/* Risk value protected */}
-                            <div
-                                className="rounded-lg border p-4"
-                                style={{
-                                    borderColor:
-                                        'var(--border-hairline)',
-                                    background: 'var(--bg-surface)',
-                                    boxShadow: 'var(--shadow-sm)',
-                                }}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span
-                                        className="text-[12px] font-medium"
-                                        style={{
-                                            color:
-                                                'var(--text-secondary)',
+                                            color: 'var(--text-tertiary)',
                                         }}
                                     >
-                                        Risk Value Protected
-                                    </span>
-
-                                    <TrendingDown
-                                        size={15}
-                                        style={{
-                                            color:
-                                                'var(--text-tertiary)',
-                                        }}
-                                    />
-                                </div>
-
-                                <div
-                                    className="font-data mt-4 text-2xl font-medium leading-none"
-                                    style={{
-                                        color: 'var(--risk-safe)',
-                                    }}
-                                >
-                                    {formatINR(estimatedSavings)}
-                                </div>
-
-                                <p
-                                    className="mt-2 text-[11px]"
-                                    style={{
-                                        color:
-                                            'var(--text-tertiary)',
-                                    }}
-                                >
-                                    Estimated annual loss avoided
-                                </p>
-                            </div>
-
-                            {/* ROSI */}
-                            <div
-                                className="rounded-lg border p-4"
-                                style={{
-                                    borderColor:
-                                        'var(--border-hairline)',
-                                    background: 'var(--bg-surface)',
-                                    boxShadow: 'var(--shadow-sm)',
-                                }}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span
-                                        className="text-[12px] font-medium"
-                                        style={{
-                                            color:
-                                                'var(--text-secondary)',
-                                        }}
-                                    >
-                                        ROSI
-                                    </span>
-
-                                    <Calculator
-                                        size={15}
-                                        style={{
-                                            color:
-                                                'var(--text-tertiary)',
-                                        }}
-                                    />
-                                </div>
-
-                                <div
-                                    className="font-data mt-4 text-2xl font-medium leading-none"
-                                    style={{
-                                        color:
-                                            result.rosi >= 0
-                                                ? 'var(--risk-safe)'
-                                                : 'var(--risk-critical)',
-                                    }}
-                                >
-                                    {(result.rosi * 100).toFixed(1)}%
+                                        Estimated impact of the recommended
+                                        control set.
+                                    </p>
                                 </div>
 
                                 <span
-                                    className="mt-2 inline-flex rounded-full px-2 py-1 text-[10px] font-medium"
-                                    style={getRosiStyle(result.rosi)}
+                                    className="font-data text-sm font-bold"
+                                    style={{ color: 'var(--risk-safe)' }}
                                 >
-                                    {result.rosi >= 0
-                                        ? 'Positive return'
-                                        : 'Negative return'}
+                                    {riskReductionPercent.toFixed(1)}%
                                 </span>
+                            </div>
+
+                            <div
+                                className="mt-4 h-3 border"
+                                style={{
+                                    borderColor: 'var(--border-hairline)',
+                                    background: 'var(--bg-surface-raised)',
+                                }}
+                                aria-label={`${riskReductionPercent.toFixed(1)} percent risk reduction`}
+                            >
+                                <div
+                                    className="h-full"
+                                    style={{
+                                        width: `${boundedReduction}%`,
+                                        background: 'var(--risk-safe)',
+                                    }}
+                                />
                             </div>
                         </div>
 
                         {/* Recommended controls */}
-                        <section
-                            className="mt-6 overflow-hidden rounded-lg border"
-                            style={{
-                                borderColor:
-                                    'var(--border-hairline)',
-                                background: 'var(--bg-surface)',
-                                boxShadow: 'var(--shadow-sm)',
-                            }}
-                        >
+                        <section className="panel mt-6 overflow-hidden">
                             <div
-                                className="border-b px-5 py-4"
+                                className="border-b-2 px-5 py-5"
                                 style={{
-                                    borderColor:
-                                        'var(--border-hairline-soft)',
+                                    borderColor: 'var(--border-strong)',
+                                    background: 'var(--bg-surface)',
                                 }}
                             >
-                                <h2
-                                    className="text-sm font-semibold"
-                                    style={{
-                                        color:
-                                            'var(--text-primary)',
-                                    }}
-                                >
-                                    Recommended Security Controls
-                                </h2>
-
-                                <p
-                                    className="mt-0.5 text-[11px]"
-                                    style={{
-                                        color:
-                                            'var(--text-tertiary)',
-                                    }}
-                                >
-                                    Controls selected by the investment
-                                    optimization engine.
-                                </p>
-                            </div>
-
-                            {result.recommendedControls.length ===
-                                0 ? (
-                                <div className="px-6 py-14 text-center">
-                                    <div
-                                        className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border"
+                                <div className="flex items-start gap-3">
+                                    <span
+                                        className="flex h-8 w-8 shrink-0 items-center justify-center border"
                                         style={{
                                             borderColor:
                                                 'var(--border-hairline)',
-                                            background:
-                                                'var(--bg-base)',
-                                            color:
-                                                'var(--text-tertiary)',
+                                            background: 'var(--bg-base)',
+                                            color: 'var(--text-secondary)',
                                         }}
                                     >
-                                        <Wallet size={17} />
+                                        <ShieldCheck size={15} />
+                                    </span>
+
+                                    <div>
+                                        <h2
+                                            className="text-sm font-bold"
+                                            style={{
+                                                color: 'var(--text-primary)',
+                                            }}
+                                        >
+                                            Recommended Security Controls
+                                        </h2>
+                                        <p
+                                            className="mt-1 text-xs leading-5"
+                                            style={{
+                                                color: 'var(--text-tertiary)',
+                                            }}
+                                        >
+                                            Controls selected by the
+                                            investment optimization engine.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {result.recommendedControls.length === 0 ? (
+                                <div className="px-6 py-16 text-center">
+                                    <div
+                                        className="mx-auto flex h-11 w-11 items-center justify-center border"
+                                        style={{
+                                            borderColor:
+                                                'var(--border-hairline)',
+                                            background: 'var(--bg-base)',
+                                            color: 'var(--text-tertiary)',
+                                        }}
+                                    >
+                                        <Wallet size={18} />
                                     </div>
 
                                     <h3
-                                        className="mt-3 text-sm font-medium"
+                                        className="mt-4 text-sm font-bold"
                                         style={{
-                                            color:
-                                                'var(--text-primary)',
+                                            color: 'var(--text-primary)',
                                         }}
                                     >
                                         No controls selected
                                     </h3>
 
                                     <p
-                                        className="mx-auto mt-1 max-w-sm text-[12px]"
+                                        className="mx-auto mt-1 max-w-md text-xs leading-5"
                                         style={{
-                                            color:
-                                                'var(--text-tertiary)',
+                                            color: 'var(--text-tertiary)',
                                         }}
                                     >
-                                        No available controls can be
-                                        selected within the specified
-                                        budget.
+                                        No available controls can be selected
+                                        within the specified budget.
                                     </p>
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full min-w-190 text-left">
+                                    <table className="w-full min-w-[720px] text-left">
                                         <thead
                                             className="border-b"
                                             style={{
                                                 borderColor:
-                                                    'var(--border-hairline-soft)',
-                                                background:
-                                                    'var(--bg-base)',
+                                                    'var(--border-hairline)',
+                                                background: 'var(--bg-base)',
                                             }}
                                         >
                                             <tr>
                                                 <th
-                                                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                                    className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.1em]"
                                                     style={{
-                                                        color:
-                                                            'var(--text-tertiary)',
+                                                        color: 'var(--text-tertiary)',
                                                     }}
                                                 >
                                                     Control
                                                 </th>
-
                                                 <th
-                                                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                                    className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.1em]"
                                                     style={{
-                                                        color:
-                                                            'var(--text-tertiary)',
+                                                        color: 'var(--text-tertiary)',
                                                     }}
                                                 >
                                                     Category
                                                 </th>
-
                                                 <th
-                                                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                                    className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.1em]"
                                                     style={{
-                                                        color:
-                                                            'var(--text-tertiary)',
+                                                        color: 'var(--text-tertiary)',
                                                     }}
                                                 >
                                                     Cost
                                                 </th>
-
                                                 <th
-                                                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                                    className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.1em]"
                                                     style={{
-                                                        color:
-                                                            'var(--text-tertiary)',
+                                                        color: 'var(--text-tertiary)',
                                                     }}
                                                 >
-                                                    Risk Reduction
+                                                    Risk reduction
                                                 </th>
                                             </tr>
                                         </thead>
@@ -697,16 +595,20 @@ export default function Optimizer() {
                                                 (control) => (
                                                     <tr
                                                         key={control.id}
-                                                        className="border-b last:border-0 transition-colors duration-100"
+                                                        className="border-b last:border-0"
                                                         style={{
                                                             borderColor:
                                                                 'var(--border-hairline-soft)',
                                                         }}
-                                                        onMouseEnter={(event) => {
+                                                        onMouseEnter={(
+                                                            event,
+                                                        ) => {
                                                             event.currentTarget.style.background =
                                                                 'var(--bg-surface-hover)'
                                                         }}
-                                                        onMouseLeave={(event) => {
+                                                        onMouseLeave={(
+                                                            event,
+                                                        ) => {
                                                             event.currentTarget.style.background =
                                                                 'transparent'
                                                         }}
@@ -714,20 +616,19 @@ export default function Optimizer() {
                                                         <td className="px-5 py-4">
                                                             <div>
                                                                 <div
-                                                                    className="text-[13px] font-medium"
+                                                                    className="text-sm font-bold"
                                                                     style={{
-                                                                        color:
-                                                                            'var(--text-primary)',
+                                                                        color: 'var(--text-primary)',
                                                                     }}
                                                                 >
-                                                                    {control.name}
+                                                                    {
+                                                                        control.name
+                                                                    }
                                                                 </div>
-
                                                                 <div
-                                                                    className="font-data mt-0.5 text-[10px]"
+                                                                    className="font-data mt-1 text-[10px]"
                                                                     style={{
-                                                                        color:
-                                                                            'var(--text-tertiary)',
+                                                                        color: 'var(--text-tertiary)',
                                                                     }}
                                                                 >
                                                                     {control.id}
@@ -736,20 +637,18 @@ export default function Optimizer() {
                                                         </td>
 
                                                         <td
-                                                            className="px-5 py-4 text-[12px]"
+                                                            className="px-5 py-4 text-xs"
                                                             style={{
-                                                                color:
-                                                                    'var(--text-secondary)',
+                                                                color: 'var(--text-secondary)',
                                                             }}
                                                         >
                                                             {control.category}
                                                         </td>
 
                                                         <td
-                                                            className="font-data px-5 py-4 text-[12px]"
+                                                            className="font-data px-5 py-4 text-xs font-semibold"
                                                             style={{
-                                                                color:
-                                                                    'var(--text-primary)',
+                                                                color: 'var(--text-primary)',
                                                             }}
                                                         >
                                                             {formatINR(
@@ -758,16 +657,18 @@ export default function Optimizer() {
                                                         </td>
 
                                                         <td className="px-5 py-4">
-                                                            <div className="flex items-center gap-2.5">
+                                                            <div className="flex items-center gap-3">
                                                                 <div
-                                                                    className="h-1.5 w-20 overflow-hidden rounded-full"
+                                                                    className="h-2 w-24 border"
                                                                     style={{
+                                                                        borderColor:
+                                                                            'var(--border-hairline)',
                                                                         background:
                                                                             'var(--bg-surface-raised)',
                                                                     }}
                                                                 >
                                                                     <div
-                                                                        className="h-full rounded-full"
+                                                                        className="h-full"
                                                                         style={{
                                                                             width: `${Math.min(
                                                                                 Math.max(
@@ -784,16 +685,17 @@ export default function Optimizer() {
                                                                 </div>
 
                                                                 <span
-                                                                    className="font-data text-[11px] font-medium"
+                                                                    className="font-data text-xs font-bold"
                                                                     style={{
-                                                                        color:
-                                                                            'var(--risk-safe)',
+                                                                        color: 'var(--risk-safe)',
                                                                     }}
                                                                 >
                                                                     {(
                                                                         control.riskReductionPct *
                                                                         100
-                                                                    ).toFixed(1)}
+                                                                    ).toFixed(
+                                                                        1,
+                                                                    )}
                                                                     %
                                                                 </span>
                                                             </div>
@@ -806,30 +708,26 @@ export default function Optimizer() {
                                 </div>
                             )}
 
-                            {/* Totals */}
                             <div
-                                className="grid gap-4 border-t px-5 py-4 sm:grid-cols-2"
+                                className="grid gap-5 border-t-2 px-5 py-5 sm:grid-cols-2"
                                 style={{
-                                    borderColor:
-                                        'var(--border-hairline-soft)',
+                                    borderColor: 'var(--border-strong)',
+                                    background: 'var(--bg-base)',
                                 }}
                             >
                                 <div>
                                     <p
-                                        className="text-[11px]"
+                                        className="text-[10px] font-bold uppercase tracking-[0.08em]"
                                         style={{
-                                            color:
-                                                'var(--text-tertiary)',
+                                            color: 'var(--text-tertiary)',
                                         }}
                                     >
                                         Total recommended investment
                                     </p>
-
                                     <p
-                                        className="font-data mt-1 text-lg font-medium"
+                                        className="stat-value mt-1 text-lg"
                                         style={{
-                                            color:
-                                                'var(--text-primary)',
+                                            color: 'var(--text-primary)',
                                         }}
                                     >
                                         {formatINR(result.totalCost)}
@@ -838,32 +736,27 @@ export default function Optimizer() {
 
                                 <div className="sm:text-right">
                                     <p
-                                        className="text-[11px]"
+                                        className="text-[10px] font-bold uppercase tracking-[0.08em]"
                                         style={{
-                                            color:
-                                                'var(--text-tertiary)',
+                                            color: 'var(--text-tertiary)',
                                         }}
                                     >
                                         Remaining budget
                                     </p>
-
                                     <p
-                                        className="font-data mt-1 text-lg font-medium"
+                                        className="stat-value mt-1 text-lg"
                                         style={{
-                                            color:
-                                                'var(--risk-safe)',
+                                            color: 'var(--risk-safe)',
                                         }}
                                     >
-                                        {formatINR(
-                                            result.remainingBudget,
-                                        )}
+                                        {formatINR(result.remainingBudget)}
                                     </p>
                                 </div>
                             </div>
                         </section>
-                    </>
+                    </section>
                 )}
-            </div>
+            </main>
         </div>
     )
 }

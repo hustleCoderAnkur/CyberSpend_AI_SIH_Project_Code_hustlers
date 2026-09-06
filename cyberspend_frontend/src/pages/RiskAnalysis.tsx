@@ -170,7 +170,7 @@ export default function RiskAnalysis() {
                         {Array.from({ length: 5 }).map((_, index) => (
                             <div
                                 key={index}
-                                className="h-28 animate-pulse rounded-lg border"
+                                className="h-28 animate-pulse rounded-md border-2"
                                 style={{
                                     borderColor:
                                         'var(--border-hairline)',
@@ -182,7 +182,7 @@ export default function RiskAnalysis() {
                     </div>
 
                     <div
-                        className="mt-6 h-80 animate-pulse rounded-lg border"
+                        className="mt-6 h-80 animate-pulse rounded-md border-2"
                         style={{
                             borderColor: 'var(--border-hairline)',
                             background: 'var(--bg-surface)',
@@ -201,7 +201,7 @@ export default function RiskAnalysis() {
             >
                 <div className="mx-auto w-full max-w-7xl px-6 py-7 lg:px-8">
                     <div
-                        className="rounded-lg border p-5"
+                        className="rounded-md border-2 p-5"
                         style={{
                             borderColor: '#FECACA',
                             background: 'var(--status-danger-bg)',
@@ -217,7 +217,7 @@ export default function RiskAnalysis() {
 
                             <div className="min-w-0">
                                 <p
-                                    className="text-sm font-medium"
+                                    className="text-sm font-bold"
                                     style={{
                                         color:
                                             'var(--status-danger-text)',
@@ -238,7 +238,7 @@ export default function RiskAnalysis() {
                                 <button
                                     type="button"
                                     onClick={loadRiskData}
-                                    className="mt-4 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[12px] font-medium"
+                                    className="mt-4 inline-flex items-center gap-2 rounded-sm border-2 px-3 py-2 text-[12px] font-bold uppercase tracking-wide"
                                     style={{
                                         borderColor: '#FECACA',
                                         background: 'var(--bg-surface)',
@@ -283,15 +283,15 @@ export default function RiskAnalysis() {
             <div className="mx-auto w-full max-w-7xl px-6 py-7 lg:px-8">
                 {/* Header */}
                 <header>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                         <Activity
-                            size={18}
-                            strokeWidth={1.8}
+                            size={20}
+                            strokeWidth={2}
                             style={{ color: 'var(--text-primary)' }}
                         />
 
                         <h1
-                            className="text-xl font-semibold tracking-tight"
+                            className="text-2xl font-extrabold tracking-tight"
                             style={{ color: 'var(--text-primary)' }}
                         >
                             Risk Analysis
@@ -311,16 +311,15 @@ export default function RiskAnalysis() {
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                     {/* Overall Risk */}
                     <div
-                        className="rounded-lg border p-4"
+                        className="rounded-md border-2 p-4"
                         style={{
-                            borderColor: 'var(--border-hairline)',
+                            borderColor: 'var(--border-strong)',
                             background: 'var(--bg-surface)',
-                            boxShadow: 'var(--shadow-sm)',
                         }}
                     >
                         <div className="flex items-center justify-between">
                             <span
-                                className="text-[12px] font-medium"
+                                className="text-[12px] font-bold uppercase tracking-wide"
                                 style={{
                                     color: 'var(--text-secondary)',
                                 }}
@@ -338,7 +337,7 @@ export default function RiskAnalysis() {
 
                         <div className="mt-4 flex items-end gap-2">
                             <span
-                                className="font-data text-3xl font-medium leading-none"
+                                className="font-data text-4xl font-bold leading-none"
                                 style={{
                                     color: getScoreTextClass(
                                         summary.overallRiskScore,
@@ -349,7 +348,7 @@ export default function RiskAnalysis() {
                             </span>
 
                             <span
-                                className="mb-0.5 rounded-full px-2 py-1 text-[10px] font-medium"
+                                className="mb-0.5 rounded-full px-2 py-1 text-[10px] font-bold"
                                 style={overallRiskStyle}
                             >
                                 {riskLevel}
@@ -359,16 +358,15 @@ export default function RiskAnalysis() {
 
                     {/* EAL */}
                     <div
-                        className="rounded-lg border p-4"
+                        className="rounded-md border-2 p-4"
                         style={{
-                            borderColor: 'var(--border-hairline)',
+                            borderColor: 'var(--border-strong)',
                             background: 'var(--bg-surface)',
-                            boxShadow: 'var(--shadow-sm)',
                         }}
                     >
                         <div className="flex items-center justify-between">
                             <span
-                                className="text-[12px] font-medium"
+                                className="text-[12px] font-bold uppercase tracking-wide"
                                 style={{
                                     color: 'var(--text-secondary)',
                                 }}
@@ -385,7 +383,7 @@ export default function RiskAnalysis() {
                         </div>
 
                         <div
-                            className="font-data mt-4 text-2xl font-medium leading-none"
+                            className="font-data mt-4 text-3xl font-bold leading-none"
                             style={{
                                 color: 'var(--text-primary)',
                             }}
@@ -405,16 +403,15 @@ export default function RiskAnalysis() {
 
                     {/* Assets */}
                     <div
-                        className="rounded-lg border p-4"
+                        className="rounded-md border-2 p-4"
                         style={{
-                            borderColor: 'var(--border-hairline)',
+                            borderColor: 'var(--border-strong)',
                             background: 'var(--bg-surface)',
-                            boxShadow: 'var(--shadow-sm)',
                         }}
                     >
                         <div className="flex items-center justify-between">
                             <span
-                                className="text-[12px] font-medium"
+                                className="text-[12px] font-bold uppercase tracking-wide"
                                 style={{
                                     color: 'var(--text-secondary)',
                                 }}
@@ -431,7 +428,7 @@ export default function RiskAnalysis() {
                         </div>
 
                         <div
-                            className="font-data mt-4 text-3xl font-medium leading-none"
+                            className="font-data mt-4 text-4xl font-bold leading-none"
                             style={{
                                 color: 'var(--text-primary)',
                             }}
@@ -442,16 +439,15 @@ export default function RiskAnalysis() {
 
                     {/* Critical vulnerabilities */}
                     <div
-                        className="rounded-lg border p-4"
+                        className="rounded-md border-2 p-4"
                         style={{
-                            borderColor: 'var(--border-hairline)',
+                            borderColor: 'var(--border-strong)',
                             background: 'var(--bg-surface)',
-                            boxShadow: 'var(--shadow-sm)',
                         }}
                     >
                         <div className="flex items-center justify-between">
                             <span
-                                className="text-[12px] font-medium"
+                                className="text-[12px] font-bold uppercase tracking-wide"
                                 style={{
                                     color: 'var(--text-secondary)',
                                 }}
@@ -468,7 +464,7 @@ export default function RiskAnalysis() {
                         </div>
 
                         <div
-                            className="font-data mt-4 text-3xl font-medium leading-none"
+                            className="font-data mt-4 text-4xl font-bold leading-none"
                             style={{
                                 color: 'var(--risk-critical)',
                             }}
@@ -479,16 +475,15 @@ export default function RiskAnalysis() {
 
                     {/* Exploitable */}
                     <div
-                        className="rounded-lg border p-4"
+                        className="rounded-md border-2 p-4"
                         style={{
-                            borderColor: 'var(--border-hairline)',
+                            borderColor: 'var(--border-strong)',
                             background: 'var(--bg-surface)',
-                            boxShadow: 'var(--shadow-sm)',
                         }}
                     >
                         <div className="flex items-center justify-between">
                             <span
-                                className="text-[12px] font-medium"
+                                className="text-[12px] font-bold uppercase tracking-wide"
                                 style={{
                                     color: 'var(--text-secondary)',
                                 }}
@@ -505,7 +500,7 @@ export default function RiskAnalysis() {
                         </div>
 
                         <div
-                            className="font-data mt-4 text-3xl font-medium leading-none"
+                            className="font-data mt-4 text-4xl font-bold leading-none"
                             style={{
                                 color: 'var(--risk-high)',
                             }}
@@ -517,23 +512,22 @@ export default function RiskAnalysis() {
 
                 {/* Risk table */}
                 <section
-                    className="mt-6 overflow-hidden rounded-lg border"
+                    className="mt-6 overflow-hidden rounded-md border-2"
                     style={{
-                        borderColor: 'var(--border-hairline)',
+                        borderColor: 'var(--border-strong)',
                         background: 'var(--bg-surface)',
-                        boxShadow: 'var(--shadow-sm)',
                     }}
                 >
                     <div
-                        className="flex flex-col gap-1 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-1 border-b-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
                         style={{
                             borderColor:
-                                'var(--border-hairline-soft)',
+                                'var(--border-strong)',
                         }}
                     >
                         <div>
                             <h2
-                                className="text-sm font-semibold"
+                                className="text-base font-bold"
                                 style={{
                                     color: 'var(--text-primary)',
                                 }}
@@ -553,7 +547,7 @@ export default function RiskAnalysis() {
                         </div>
 
                         <span
-                            className="font-data text-[11px]"
+                            className="font-data text-[11px] font-semibold"
                             style={{
                                 color: 'var(--text-tertiary)',
                             }}
@@ -565,10 +559,10 @@ export default function RiskAnalysis() {
                     {risks.length === 0 ? (
                         <div className="px-6 py-14 text-center">
                             <div
-                                className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border"
+                                className="mx-auto flex h-10 w-10 items-center justify-center rounded-sm border-2"
                                 style={{
                                     borderColor:
-                                        'var(--border-hairline)',
+                                        'var(--border-strong)',
                                     background: 'var(--bg-base)',
                                     color: 'var(--text-tertiary)',
                                 }}
@@ -577,7 +571,7 @@ export default function RiskAnalysis() {
                             </div>
 
                             <h3
-                                className="mt-3 text-sm font-medium"
+                                className="mt-3 text-sm font-semibold"
                                 style={{
                                     color: 'var(--text-primary)',
                                 }}
@@ -599,16 +593,16 @@ export default function RiskAnalysis() {
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-225 text-left">
                                 <thead
-                                    className="border-b"
+                                    className="border-b-2"
                                     style={{
                                         borderColor:
-                                            'var(--border-hairline-soft)',
+                                            'var(--border-strong)',
                                         background: 'var(--bg-base)',
                                     }}
                                 >
                                     <tr>
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color:
                                                     'var(--text-tertiary)',
@@ -618,7 +612,7 @@ export default function RiskAnalysis() {
                                         </th>
 
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color:
                                                     'var(--text-tertiary)',
@@ -628,7 +622,7 @@ export default function RiskAnalysis() {
                                         </th>
 
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color:
                                                     'var(--text-tertiary)',
@@ -638,7 +632,7 @@ export default function RiskAnalysis() {
                                         </th>
 
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color:
                                                     'var(--text-tertiary)',
@@ -648,7 +642,7 @@ export default function RiskAnalysis() {
                                         </th>
 
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color:
                                                     'var(--text-tertiary)',
@@ -658,7 +652,7 @@ export default function RiskAnalysis() {
                                         </th>
 
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color:
                                                     'var(--text-tertiary)',
@@ -688,7 +682,7 @@ export default function RiskAnalysis() {
                                                 className="border-b last:border-0 transition-colors duration-100"
                                                 style={{
                                                     borderColor:
-                                                        'var(--border-hairline-soft)',
+                                                        'var(--border-hairline)',
                                                 }}
                                                 onMouseEnter={(event) => {
                                                     event.currentTarget.style.background =
@@ -703,7 +697,7 @@ export default function RiskAnalysis() {
                                                 <td className="px-5 py-4">
                                                     <div>
                                                         <div
-                                                            className="text-[13px] font-medium"
+                                                            className="text-[13px] font-semibold"
                                                             style={{
                                                                 color:
                                                                     'var(--text-primary)',
@@ -786,7 +780,7 @@ export default function RiskAnalysis() {
                                                         </div>
 
                                                         <span
-                                                            className="font-data text-[12px] font-medium"
+                                                            className="font-data text-[12px] font-bold"
                                                             style={{
                                                                 color:
                                                                     getScoreTextClass(
@@ -815,7 +809,7 @@ export default function RiskAnalysis() {
                                                 {/* Severity */}
                                                 <td className="px-5 py-4">
                                                     <span
-                                                        className="inline-flex rounded-full px-2 py-1 text-[10px] font-medium"
+                                                        className="inline-flex rounded-full px-2 py-1 text-[10px] font-bold"
                                                         style={severityStyle}
                                                     >
                                                         {risk.severity}

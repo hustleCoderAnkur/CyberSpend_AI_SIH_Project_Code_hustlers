@@ -146,10 +146,10 @@ export default function Dashboard() {
       >
         <div className="text-center">
           <div
-            className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border"
+            className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border-2"
             style={{
               borderColor:
-                'var(--border-hairline)',
+                'var(--border-strong)',
               background:
                 'var(--bg-surface)',
             }}
@@ -165,7 +165,7 @@ export default function Dashboard() {
           </div>
 
           <p
-            className="mt-3 text-sm"
+            className="mt-3 text-sm font-medium"
             style={{
               color:
                 'var(--text-secondary)',
@@ -188,12 +188,13 @@ export default function Dashboard() {
         }}
       >
         <div
-          className="w-full max-w-md rounded-xl border p-6 text-center"
+          className="w-full max-w-md border-2 p-6 text-center"
           style={{
             borderColor:
-              'var(--border-hairline)',
+              'var(--border-strong)',
             background:
               'var(--bg-surface)',
+            borderRadius: 'var(--radius-md)',
           }}
         >
           <div
@@ -209,7 +210,7 @@ export default function Dashboard() {
           </div>
 
           <h2
-            className="mt-4 text-sm font-semibold"
+            className="mt-4 text-base font-bold"
             style={{
               color:
                 'var(--text-primary)',
@@ -234,12 +235,13 @@ export default function Dashboard() {
             onClick={() =>
               void loadDashboard()
             }
-            className="mt-5 inline-flex items-center gap-2 rounded-md px-4 py-2 text-xs font-medium"
+            className="mt-5 inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wide"
             style={{
               background:
                 'var(--accent-action)',
               color:
                 'var(--text-inverse)',
+              borderRadius: 'var(--radius-sm)',
             }}
           >
             <RefreshCw size={14} />
@@ -275,7 +277,7 @@ export default function Dashboard() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p
-                className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+                className="text-[11px] font-bold uppercase tracking-[0.16em]"
                 style={{
                   color:
                     'var(--text-tertiary)',
@@ -285,7 +287,7 @@ export default function Dashboard() {
               </p>
 
               <h1
-                className="mt-1 text-2xl font-semibold tracking-tight"
+                className="mt-1 text-3xl font-extrabold tracking-tight"
                 style={{
                   color:
                     'var(--text-primary)',
@@ -309,10 +311,10 @@ export default function Dashboard() {
             </div>
 
             <div
-              className="inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5"
+              className="inline-flex w-fit items-center gap-2 rounded-full border-2 px-3 py-1.5"
               style={{
                 borderColor:
-                  'var(--border-hairline)',
+                  'var(--border-strong)',
                 background:
                   'var(--bg-surface)',
               }}
@@ -326,7 +328,7 @@ export default function Dashboard() {
               />
 
               <span
-                className="text-[11px] font-medium"
+                className="text-[11px] font-semibold"
                 style={{
                   color:
                     'var(--text-secondary)',
@@ -340,12 +342,13 @@ export default function Dashboard() {
 
         {/* EAL Hero */}
         <section
-          className="rounded-xl border"
+          className="border-2"
           style={{
             borderColor:
-              'var(--border-hairline)',
+              'var(--border-strong)',
             background:
               'var(--bg-surface)',
+            borderRadius: 'var(--radius-md)',
           }}
         >
           <div className="grid lg:grid-cols-[1fr_220px_240px]">
@@ -353,7 +356,7 @@ export default function Dashboard() {
             <div className="p-6">
               <div className="flex items-center gap-2">
                 <span
-                  className="text-xs font-medium"
+                  className="text-xs font-semibold"
                   style={{
                     color:
                       'var(--text-secondary)',
@@ -363,7 +366,7 @@ export default function Dashboard() {
                 </span>
 
                 <span
-                  className="rounded-full px-2 py-0.5 text-[10px]"
+                  className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
                   style={{
                     background:
                       'var(--status-danger-bg)',
@@ -377,7 +380,7 @@ export default function Dashboard() {
 
               <div className="mt-3">
                 <span
-                  className="font-data text-3xl font-semibold tracking-tight md:text-4xl"
+                  className="font-data text-4xl font-bold tracking-tight md:text-5xl"
                   style={{
                     color:
                       'var(--text-primary)',
@@ -404,10 +407,10 @@ export default function Dashboard() {
 
             {/* Trend */}
             <div
-              className="border-t p-5 lg:border-l lg:border-t-0"
+              className="border-t-2 p-5 lg:border-l-2 lg:border-t-0"
               style={{
                 borderColor:
-                  'var(--border-hairline-soft)',
+                  'var(--border-strong)',
               }}
             >
               <div className="flex items-center gap-2">
@@ -420,7 +423,7 @@ export default function Dashboard() {
                 />
 
                 <span
-                  className="text-xs font-medium"
+                  className="text-xs font-semibold"
                   style={{
                     color:
                       'var(--text-secondary)',
@@ -505,14 +508,14 @@ export default function Dashboard() {
 
             {/* Overall Risk */}
             <div
-              className="border-t p-5 lg:border-l lg:border-t-0"
+              className="border-t-2 p-5 lg:border-l-2 lg:border-t-0"
               style={{
                 borderColor:
-                  'var(--border-hairline-soft)',
+                  'var(--border-strong)',
               }}
             >
               <span
-                className="text-xs font-medium"
+                className="text-xs font-semibold"
                 style={{
                   color:
                     'var(--text-secondary)',
@@ -523,7 +526,7 @@ export default function Dashboard() {
 
               <div className="mt-3 flex items-end gap-2">
                 <span
-                  className="font-data text-3xl font-semibold leading-none"
+                  className="font-data text-4xl font-bold leading-none"
                   style={{
                     color:
                       'var(--text-primary)',
@@ -555,7 +558,7 @@ export default function Dashboard() {
                 />
 
                 <span
-                  className="text-xs font-medium"
+                  className="text-xs font-semibold"
                   style={{
                     color:
                       riskColor,
@@ -605,31 +608,39 @@ export default function Dashboard() {
 
         {/* Risk Table */}
         <section
-          className="mt-5 overflow-hidden rounded-xl border"
+          className="mt-5 overflow-hidden border-2"
           style={{
             borderColor:
-              'var(--border-hairline)',
+              'var(--border-strong)',
             background:
               'var(--bg-surface)',
+            borderRadius: 'var(--radius-md)',
           }}
         >
-          <div className="flex items-center justify-between border-b px-5 py-4">
+          <div
+            className="flex items-center justify-between border-b-2 px-5 py-4"
+            style={{
+              borderColor:
+                'var(--border-strong)',
+            }}
+          >
             <div className="flex items-center gap-2.5">
               <div
-                className="flex h-7 w-7 items-center justify-center rounded-md"
+                className="flex h-8 w-8 items-center justify-center"
                 style={{
                   background:
                     'var(--bg-surface-raised)',
                   color:
                     'var(--text-secondary)',
+                  borderRadius: 'var(--radius-sm)',
                 }}
               >
-                <ShieldAlert size={15} />
+                <ShieldAlert size={16} />
               </div>
 
               <div>
                 <h2
-                  className="text-sm font-semibold"
+                  className="text-base font-bold"
                   style={{
                     color:
                       'var(--text-primary)',
@@ -652,7 +663,7 @@ export default function Dashboard() {
             </div>
 
             <span
-              className="text-[11px]"
+              className="text-[11px] font-semibold"
               style={{
                 color:
                   'var(--text-tertiary)',
@@ -677,7 +688,7 @@ export default function Dashboard() {
               </div>
 
               <p
-                className="mt-3 text-sm font-medium"
+                className="mt-3 text-sm font-semibold"
                 style={{
                   color:
                     'var(--text-primary)',
@@ -703,14 +714,14 @@ export default function Dashboard() {
               <table className="w-full min-w-190 text-left">
                 <thead>
                   <tr
-                    className="border-b"
+                    className="border-b-2"
                     style={{
                       borderColor:
-                        'var(--border-hairline-soft)',
+                        'var(--border-strong)',
                     }}
                   >
                     <th
-                      className="px-5 py-3 text-[10px] font-semibold uppercase tracking-wider"
+                      className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider"
                       style={{
                         color:
                           'var(--text-tertiary)',
@@ -720,7 +731,7 @@ export default function Dashboard() {
                     </th>
 
                     <th
-                      className="px-5 py-3 text-[10px] font-semibold uppercase tracking-wider"
+                      className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider"
                       style={{
                         color:
                           'var(--text-tertiary)',
@@ -730,7 +741,7 @@ export default function Dashboard() {
                     </th>
 
                     <th
-                      className="px-5 py-3 text-[10px] font-semibold uppercase tracking-wider"
+                      className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider"
                       style={{
                         color:
                           'var(--text-tertiary)',
@@ -740,7 +751,7 @@ export default function Dashboard() {
                     </th>
 
                     <th
-                      className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-wider"
+                      className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider"
                       style={{
                         color:
                           'var(--text-tertiary)',
@@ -750,7 +761,7 @@ export default function Dashboard() {
                     </th>
 
                     <th
-                      className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-wider"
+                      className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider"
                       style={{
                         color:
                           'var(--text-tertiary)',
@@ -771,18 +782,19 @@ export default function Dashboard() {
                         className="border-b last:border-b-0"
                         style={{
                           borderColor:
-                            'var(--border-hairline-soft)',
+                            'var(--border-hairline)',
                         }}
                       >
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2.5">
                             <div
-                              className="flex h-7 w-7 items-center justify-center rounded-md"
+                              className="flex h-8 w-8 items-center justify-center"
                               style={{
                                 background:
                                   'var(--bg-surface-raised)',
                                 color:
                                   'var(--text-secondary)',
+                                borderRadius: 'var(--radius-sm)',
                               }}
                             >
                               <Server
@@ -791,7 +803,7 @@ export default function Dashboard() {
                             </div>
 
                             <span
-                              className="text-xs font-medium"
+                              className="text-xs font-semibold"
                               style={{
                                 color:
                                   'var(--text-primary)',
@@ -823,7 +835,7 @@ export default function Dashboard() {
 
                         <td className="px-5 py-3.5">
                           <span
-                            className="inline-flex items-center gap-1.5 text-xs font-medium"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold"
                             style={{
                               color:
                                 SEVERITY_COLOR[
@@ -853,7 +865,7 @@ export default function Dashboard() {
                           className="px-5 py-3.5 text-right"
                         >
                           <span
-                            className="font-data text-xs font-medium"
+                            className="font-data text-xs font-bold"
                             style={{
                               color:
                                 'var(--text-primary)',
@@ -878,7 +890,7 @@ export default function Dashboard() {
                           className="px-5 py-3.5 text-right"
                         >
                           <span
-                            className="font-data text-xs font-medium"
+                            className="font-data text-xs font-bold"
                             style={{
                               color:
                                 'var(--text-primary)',

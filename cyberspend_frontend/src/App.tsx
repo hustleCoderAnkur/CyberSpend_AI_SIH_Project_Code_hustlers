@@ -44,7 +44,7 @@ function ProtectedRoute({
           color: 'var(--text-secondary)',
         }}
       >
-        <span className="text-sm">
+        <span className="text-sm font-semibold uppercase tracking-wider">
           Loading...
         </span>
       </div>

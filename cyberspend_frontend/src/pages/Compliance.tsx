@@ -115,17 +115,17 @@ export default function Compliance() {
             <div className="mx-auto w-full max-w-7xl px-6 py-7 lg:px-8">
                 {/* Header */}
                 <header>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                         <ShieldCheck
-                            size={18}
-                            strokeWidth={1.8}
+                            size={20}
+                            strokeWidth={2}
                             style={{
                                 color: 'var(--text-primary)',
                             }}
                         />
 
                         <h1
-                            className="text-xl font-semibold tracking-tight"
+                            className="text-2xl font-extrabold tracking-tight"
                             style={{
                                 color: 'var(--text-primary)',
                             }}
@@ -147,22 +147,20 @@ export default function Compliance() {
 
                 {/* Framework selector */}
                 <section
-                    className="mt-6 rounded-lg border"
+                    className="mt-6 border-2"
                     style={{
-                        borderColor:
-                            'var(--border-hairline)',
+                        borderColor: 'var(--border-strong)',
                         background: 'var(--bg-surface)',
-                        boxShadow: 'var(--shadow-sm)',
+                        borderRadius: 'var(--radius-md)',
                     }}
                 >
                     <div className="flex flex-col gap-4 p-5 md:flex-row md:items-end md:justify-between">
                         <div>
                             <label
                                 htmlFor="compliance-framework"
-                                className="mb-1.5 block text-[12px] font-medium"
+                                className="mb-1.5 block text-[12px] font-bold uppercase tracking-wide"
                                 style={{
-                                    color:
-                                        'var(--text-secondary)',
+                                    color: 'var(--text-secondary)',
                                 }}
                             >
                                 Compliance Framework
@@ -174,14 +172,12 @@ export default function Compliance() {
                                 onChange={(event) =>
                                     setFramework(event.target.value)
                                 }
-                                className="min-w-60 rounded-md border px-3 py-2.5 text-[13px] outline-none"
+                                className="min-w-60 border-2 px-3 py-2.5 text-[13px] outline-none"
                                 style={{
-                                    borderColor:
-                                        'var(--border-hairline)',
-                                    background:
-                                        'var(--bg-surface)',
-                                    color:
-                                        'var(--text-primary)',
+                                    borderColor: 'var(--border-strong)',
+                                    background: 'var(--bg-surface)',
+                                    color: 'var(--text-primary)',
+                                    borderRadius: 'var(--radius-sm)',
                                 }}
                             >
                                 {FRAMEWORKS.map((item) => (
@@ -198,16 +194,14 @@ export default function Compliance() {
                         <div
                             className="text-[11px]"
                             style={{
-                                color:
-                                    'var(--text-tertiary)',
+                                color: 'var(--text-tertiary)',
                             }}
                         >
                             Showing mappings for{' '}
                             <span
-                                className="font-medium"
+                                className="font-bold"
                                 style={{
-                                    color:
-                                        'var(--text-secondary)',
+                                    color: 'var(--text-secondary)',
                                 }}
                             >
                                 {framework}
@@ -224,7 +218,7 @@ export default function Compliance() {
                                 (_, index) => (
                                     <div
                                         key={index}
-                                        className="h-28 animate-pulse rounded-lg border"
+                                        className="h-28 animate-pulse rounded-md border-2"
                                         style={{
                                             borderColor:
                                                 'var(--border-hairline)',
@@ -237,12 +231,10 @@ export default function Compliance() {
                         </div>
 
                         <div
-                            className="mt-6 h-72 animate-pulse rounded-lg border"
+                            className="mt-6 h-72 animate-pulse rounded-md border-2"
                             style={{
-                                borderColor:
-                                    'var(--border-hairline)',
-                                background:
-                                    'var(--bg-surface)',
+                                borderColor: 'var(--border-hairline)',
+                                background: 'var(--bg-surface)',
                             }}
                         />
                     </>
@@ -251,28 +243,26 @@ export default function Compliance() {
                 {/* Error */}
                 {!loading && error && (
                     <div
-                        className="mt-6 rounded-lg border p-5"
+                        className="mt-6 border-2 p-5"
                         style={{
                             borderColor: '#FECACA',
-                            background:
-                                'var(--status-danger-bg)',
+                            background: 'var(--status-danger-bg)',
+                            borderRadius: 'var(--radius-md)',
                         }}
                     >
                         <div className="flex items-start gap-3">
                             <AlertTriangle
                                 size={17}
                                 style={{
-                                    color:
-                                        'var(--status-danger-text)',
+                                    color: 'var(--status-danger-text)',
                                 }}
                             />
 
                             <div>
                                 <p
-                                    className="text-[13px] font-medium"
+                                    className="text-[13px] font-bold"
                                     style={{
-                                        color:
-                                            'var(--status-danger-text)',
+                                        color: 'var(--status-danger-text)',
                                     }}
                                 >
                                     Unable to load compliance data
@@ -281,8 +271,7 @@ export default function Compliance() {
                                 <p
                                     className="mt-1 text-[12px]"
                                     style={{
-                                        color:
-                                            'var(--text-secondary)',
+                                        color: 'var(--text-secondary)',
                                     }}
                                 >
                                     {error}
@@ -291,13 +280,12 @@ export default function Compliance() {
                                 <button
                                     type="button"
                                     onClick={loadCompliance}
-                                    className="mt-4 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[12px] font-medium"
+                                    className="mt-4 inline-flex items-center gap-2 border-2 px-3 py-2 text-[12px] font-bold uppercase tracking-wide"
                                     style={{
                                         borderColor: '#FECACA',
-                                        background:
-                                            'var(--bg-surface)',
-                                        color:
-                                            'var(--text-primary)',
+                                        background: 'var(--bg-surface)',
+                                        color: 'var(--text-primary)',
+                                        borderRadius: 'var(--radius-sm)',
                                     }}
                                 >
                                     <RefreshCw size={13} />
@@ -315,34 +303,29 @@ export default function Compliance() {
                         <div className="mt-6 grid gap-4 md:grid-cols-3">
                             {/* Coverage */}
                             <div
-                                className="rounded-lg border p-4"
+                                className="border-2 p-4"
                                 style={{
-                                    borderColor:
-                                        'var(--border-hairline)',
-                                    background:
-                                        'var(--bg-surface)',
-                                    boxShadow:
-                                        'var(--shadow-sm)',
+                                    borderColor: 'var(--border-strong)',
+                                    background: 'var(--bg-surface)',
+                                    borderRadius: 'var(--radius-md)',
                                 }}
                             >
                                 <div className="flex items-center justify-between">
                                     <p
-                                        className="text-[12px] font-medium"
+                                        className="text-[12px] font-bold uppercase tracking-wide"
                                         style={{
-                                            color:
-                                                'var(--text-secondary)',
+                                            color: 'var(--text-secondary)',
                                         }}
                                     >
                                         Framework Coverage
                                     </p>
 
                                     <span
-                                        className="rounded-full px-2 py-1 text-[10px] font-medium"
+                                        className="rounded-full px-2 py-1 text-[10px] font-bold"
                                         style={{
                                             background:
                                                 coverageStyle.background,
-                                            color:
-                                                coverageStyle.color,
+                                            color: coverageStyle.color,
                                         }}
                                     >
                                         {coverage >= 80
@@ -355,10 +338,9 @@ export default function Compliance() {
 
                                 <div className="mt-4 flex items-end gap-2">
                                     <span
-                                        className="font-data text-3xl font-medium leading-none"
+                                        className="font-data text-4xl font-bold leading-none"
                                         style={{
-                                            color:
-                                                coverageStyle.color,
+                                            color: coverageStyle.color,
                                         }}
                                     >
                                         {coverage.toFixed(0)}%
@@ -388,8 +370,7 @@ export default function Compliance() {
                                 <p
                                     className="mt-2 text-[11px]"
                                     style={{
-                                        color:
-                                            'var(--text-tertiary)',
+                                        color: 'var(--text-tertiary)',
                                     }}
                                 >
                                     {coveredCount} of{' '}
@@ -400,14 +381,11 @@ export default function Compliance() {
 
                             {/* Covered */}
                             <div
-                                className="rounded-lg border p-4"
+                                className="border-2 p-4"
                                 style={{
-                                    borderColor:
-                                        'var(--border-hairline)',
-                                    background:
-                                        'var(--bg-surface)',
-                                    boxShadow:
-                                        'var(--shadow-sm)',
+                                    borderColor: 'var(--border-strong)',
+                                    background: 'var(--bg-surface)',
+                                    borderRadius: 'var(--radius-md)',
                                 }}
                             >
                                 <div className="flex items-center justify-between">
@@ -415,13 +393,12 @@ export default function Compliance() {
                                         <CheckCircle2
                                             size={15}
                                             style={{
-                                                color:
-                                                    'var(--risk-safe)',
+                                                color: 'var(--risk-safe)',
                                             }}
                                         />
 
                                         <p
-                                            className="text-[12px] font-medium"
+                                            className="text-[12px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color:
                                                     'var(--text-secondary)',
@@ -432,10 +409,9 @@ export default function Compliance() {
                                     </div>
 
                                     <span
-                                        className="font-data text-[11px]"
+                                        className="font-data text-[11px] font-semibold"
                                         style={{
-                                            color:
-                                                'var(--text-tertiary)',
+                                            color: 'var(--text-tertiary)',
                                         }}
                                     >
                                         {frameworkRows.length > 0
@@ -449,10 +425,9 @@ export default function Compliance() {
                                 </div>
 
                                 <p
-                                    className="font-data mt-4 text-3xl font-medium leading-none"
+                                    className="font-data mt-4 text-4xl font-bold leading-none"
                                     style={{
-                                        color:
-                                            'var(--risk-safe)',
+                                        color: 'var(--risk-safe)',
                                     }}
                                 >
                                     {coveredCount}
@@ -461,8 +436,7 @@ export default function Compliance() {
                                 <p
                                     className="mt-2 text-[11px]"
                                     style={{
-                                        color:
-                                            'var(--text-tertiary)',
+                                        color: 'var(--text-tertiary)',
                                     }}
                                 >
                                     Controls with a framework mapping
@@ -471,14 +445,11 @@ export default function Compliance() {
 
                             {/* Gaps */}
                             <div
-                                className="rounded-lg border p-4"
+                                className="border-2 p-4"
                                 style={{
-                                    borderColor:
-                                        'var(--border-hairline)',
-                                    background:
-                                        'var(--bg-surface)',
-                                    boxShadow:
-                                        'var(--shadow-sm)',
+                                    borderColor: 'var(--border-strong)',
+                                    background: 'var(--bg-surface)',
+                                    borderRadius: 'var(--radius-md)',
                                 }}
                             >
                                 <div className="flex items-center justify-between">
@@ -486,13 +457,12 @@ export default function Compliance() {
                                         <AlertTriangle
                                             size={15}
                                             style={{
-                                                color:
-                                                    'var(--risk-high)',
+                                                color: 'var(--risk-high)',
                                             }}
                                         />
 
                                         <p
-                                            className="text-[12px] font-medium"
+                                            className="text-[12px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color:
                                                     'var(--text-secondary)',
@@ -503,7 +473,7 @@ export default function Compliance() {
                                     </div>
 
                                     <span
-                                        className="rounded-full px-2 py-1 text-[10px] font-medium"
+                                        className="rounded-full px-2 py-1 text-[10px] font-bold"
                                         style={{
                                             background:
                                                 gapCount > 0
@@ -522,7 +492,7 @@ export default function Compliance() {
                                 </div>
 
                                 <p
-                                    className="font-data mt-4 text-3xl font-medium leading-none"
+                                    className="font-data mt-4 text-4xl font-bold leading-none"
                                     style={{
                                         color:
                                             gapCount > 0
@@ -536,8 +506,7 @@ export default function Compliance() {
                                 <p
                                     className="mt-2 text-[11px]"
                                     style={{
-                                        color:
-                                            'var(--text-tertiary)',
+                                        color: 'var(--text-tertiary)',
                                     }}
                                 >
                                     Controls without a framework mapping
@@ -547,29 +516,24 @@ export default function Compliance() {
 
                         {/* Mapping table */}
                         <section
-                            className="mt-6 overflow-hidden rounded-lg border"
+                            className="mt-6 overflow-hidden border-2"
                             style={{
-                                borderColor:
-                                    'var(--border-hairline)',
-                                background:
-                                    'var(--bg-surface)',
-                                boxShadow:
-                                    'var(--shadow-sm)',
+                                borderColor: 'var(--border-strong)',
+                                background: 'var(--bg-surface)',
+                                borderRadius: 'var(--radius-md)',
                             }}
                         >
                             <div
-                                className="flex flex-col gap-1 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                                className="flex flex-col gap-1 border-b-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
                                 style={{
-                                    borderColor:
-                                        'var(--border-hairline-soft)',
+                                    borderColor: 'var(--border-strong)',
                                 }}
                             >
                                 <div>
                                     <h2
-                                        className="text-sm font-semibold"
+                                        className="text-base font-bold"
                                         style={{
-                                            color:
-                                                'var(--text-primary)',
+                                            color: 'var(--text-primary)',
                                         }}
                                     >
                                         Control Mapping
@@ -578,8 +542,7 @@ export default function Compliance() {
                                     <p
                                         className="mt-0.5 text-[11px]"
                                         style={{
-                                            color:
-                                                'var(--text-tertiary)',
+                                            color: 'var(--text-tertiary)',
                                         }}
                                     >
                                         Security controls mapped against{' '}
@@ -588,10 +551,9 @@ export default function Compliance() {
                                 </div>
 
                                 <span
-                                    className="font-data text-[11px]"
+                                    className="font-data text-[11px] font-semibold"
                                     style={{
-                                        color:
-                                            'var(--text-tertiary)',
+                                        color: 'var(--text-tertiary)',
                                     }}
                                 >
                                     {frameworkRows.length} controls
@@ -601,24 +563,22 @@ export default function Compliance() {
                             {frameworkRows.length === 0 ? (
                                 <div className="px-6 py-14 text-center">
                                     <div
-                                        className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border"
+                                        className="mx-auto flex h-10 w-10 items-center justify-center border-2"
                                         style={{
                                             borderColor:
-                                                'var(--border-hairline)',
-                                            background:
-                                                'var(--bg-base)',
-                                            color:
-                                                'var(--text-tertiary)',
+                                                'var(--border-strong)',
+                                            background: 'var(--bg-base)',
+                                            color: 'var(--text-tertiary)',
+                                            borderRadius: 'var(--radius-sm)',
                                         }}
                                     >
                                         <ShieldCheck size={17} />
                                     </div>
 
                                     <h3
-                                        className="mt-3 text-sm font-medium"
+                                        className="mt-3 text-sm font-semibold"
                                         style={{
-                                            color:
-                                                'var(--text-primary)',
+                                            color: 'var(--text-primary)',
                                         }}
                                     >
                                         No security controls found
@@ -627,8 +587,7 @@ export default function Compliance() {
                                     <p
                                         className="mt-1 text-[12px]"
                                         style={{
-                                            color:
-                                                'var(--text-tertiary)',
+                                            color: 'var(--text-tertiary)',
                                         }}
                                     >
                                         Add security controls to generate
@@ -639,17 +598,16 @@ export default function Compliance() {
                                 <div className="overflow-x-auto">
                                     <table className="w-full min-w-200 text-left">
                                         <thead
-                                            className="border-b"
+                                            className="border-b-2"
                                             style={{
                                                 borderColor:
-                                                    'var(--border-hairline-soft)',
-                                                background:
-                                                    'var(--bg-base)',
+                                                    'var(--border-strong)',
+                                                background: 'var(--bg-base)',
                                             }}
                                         >
                                             <tr>
                                                 <th
-                                                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                                    className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                                     style={{
                                                         color:
                                                             'var(--text-tertiary)',
@@ -659,7 +617,7 @@ export default function Compliance() {
                                                 </th>
 
                                                 <th
-                                                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                                    className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                                     style={{
                                                         color:
                                                             'var(--text-tertiary)',
@@ -669,7 +627,7 @@ export default function Compliance() {
                                                 </th>
 
                                                 <th
-                                                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                                    className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                                     style={{
                                                         color:
                                                             'var(--text-tertiary)',
@@ -687,7 +645,7 @@ export default function Compliance() {
                                                     className="border-b last:border-0 transition-colors duration-100"
                                                     style={{
                                                         borderColor:
-                                                            'var(--border-hairline-soft)',
+                                                            'var(--border-hairline)',
                                                     }}
                                                     onMouseEnter={(event) => {
                                                         event.currentTarget.style.background =
@@ -700,7 +658,7 @@ export default function Compliance() {
                                                 >
                                                     <td className="px-5 py-4 align-top">
                                                         <div
-                                                            className="text-[13px] font-medium"
+                                                            className="text-[13px] font-semibold"
                                                             style={{
                                                                 color:
                                                                     'var(--text-primary)',
@@ -756,7 +714,7 @@ export default function Compliance() {
                                                     <td className="px-5 py-4 align-top">
                                                         {item.covered ? (
                                                             <span
-                                                                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium"
+                                                                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold"
                                                                 style={{
                                                                     background:
                                                                         'var(--status-success-bg)',
@@ -771,7 +729,7 @@ export default function Compliance() {
                                                             </span>
                                                         ) : (
                                                             <span
-                                                                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium"
+                                                                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold"
                                                                 style={{
                                                                     background:
                                                                         'var(--status-warning-bg)',

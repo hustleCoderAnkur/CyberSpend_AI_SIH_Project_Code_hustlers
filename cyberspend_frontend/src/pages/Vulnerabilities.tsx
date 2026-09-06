@@ -236,9 +236,9 @@ export default function Vulnerabilities() {
                 {/* Header */}
                 <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                             <h1
-                                className="text-xl font-semibold tracking-tight"
+                                className="text-2xl font-extrabold tracking-tight"
                                 style={{ color: 'var(--text-primary)' }}
                             >
                                 Vulnerabilities
@@ -246,9 +246,10 @@ export default function Vulnerabilities() {
 
                             {!loading && (
                                 <span
-                                    className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                                    className="rounded-full border-2 px-2.5 py-0.5 text-[11px] font-bold"
                                     style={{
-                                        background: 'var(--bg-surface-raised)',
+                                        borderColor: 'var(--border-strong)',
+                                        background: 'var(--bg-surface)',
                                         color: 'var(--text-secondary)',
                                     }}
                                 >
@@ -269,7 +270,7 @@ export default function Vulnerabilities() {
                         type="button"
                         onClick={openCreate}
                         disabled={assets.length === 0}
-                        className="rounded-md px-4 py-2 text-[13px] font-medium transition-colors"
+                        className="px-4 py-2.5 text-[13px] font-bold uppercase tracking-wide transition-colors"
                         style={{
                             background:
                                 assets.length === 0
@@ -279,6 +280,7 @@ export default function Vulnerabilities() {
                                 assets.length === 0
                                     ? 'var(--text-tertiary)'
                                     : 'var(--text-inverse)',
+                            borderRadius: 'var(--radius-sm)',
                         }}
                     >
                         + Add Vulnerability
@@ -288,14 +290,15 @@ export default function Vulnerabilities() {
                 {/* No assets warning */}
                 {assets.length === 0 && !loading && (
                     <div
-                        className="mt-5 rounded-md border px-4 py-3"
+                        className="mt-5 border-2 px-4 py-3"
                         style={{
                             borderColor: '#FDE68A',
                             background: 'var(--status-warning-bg)',
+                            borderRadius: 'var(--radius-md)',
                         }}
                     >
                         <p
-                            className="text-[13px] font-medium"
+                            className="text-[13px] font-bold"
                             style={{ color: 'var(--status-warning-text)' }}
                         >
                             No assets available
@@ -314,14 +317,15 @@ export default function Vulnerabilities() {
                 {/* Error */}
                 {error && (
                     <div
-                        className="mt-5 flex items-start justify-between gap-4 rounded-md border px-4 py-3"
+                        className="mt-5 flex items-start justify-between gap-4 border-2 px-4 py-3"
                         style={{
                             borderColor: '#FECACA',
                             background: 'var(--status-danger-bg)',
+                            borderRadius: 'var(--radius-md)',
                         }}
                     >
                         <span
-                            className="text-[13px]"
+                            className="text-[13px] font-medium"
                             style={{ color: 'var(--status-danger-text)' }}
                         >
                             {error}
@@ -331,7 +335,7 @@ export default function Vulnerabilities() {
                             <button
                                 type="button"
                                 onClick={loadData}
-                                className="shrink-0 text-[12px] font-medium underline underline-offset-2"
+                                className="shrink-0 text-[12px] font-bold underline underline-offset-2"
                                 style={{ color: 'var(--status-danger-text)' }}
                             >
                                 Retry
@@ -344,21 +348,21 @@ export default function Vulnerabilities() {
                 {showForm && (
                     <form
                         onSubmit={handleSubmit}
-                        className="mt-6 rounded-lg border"
+                        className="mt-6 border-2"
                         style={{
-                            borderColor: 'var(--border-hairline)',
+                            borderColor: 'var(--border-strong)',
                             background: 'var(--bg-surface)',
-                            boxShadow: 'var(--shadow-sm)',
+                            borderRadius: 'var(--radius-md)',
                         }}
                     >
                         <div
-                            className="border-b px-5 py-4"
+                            className="border-b-2 px-5 py-4"
                             style={{
-                                borderColor: 'var(--border-hairline-soft)',
+                                borderColor: 'var(--border-strong)',
                             }}
                         >
                             <h2
-                                className="text-sm font-semibold"
+                                className="text-base font-bold"
                                 style={{ color: 'var(--text-primary)' }}
                             >
                                 {editingId
@@ -380,7 +384,7 @@ export default function Vulnerabilities() {
                             <div>
                                 <label
                                     htmlFor="vulnerability-name"
-                                    className="mb-1.5 block text-[12px] font-medium"
+                                    className="mb-1.5 block text-[12px] font-bold uppercase tracking-wide"
                                     style={{ color: 'var(--text-secondary)' }}
                                 >
                                     Vulnerability Name
@@ -396,15 +400,16 @@ export default function Vulnerabilities() {
                                         })
                                     }
                                     placeholder="Unpatched PostgreSQL CVE"
-                                    className="w-full rounded-md border px-3 py-2 text-[13px] outline-none transition-colors"
+                                    className="w-full border-2 px-3 py-2.5 text-[13px] outline-none transition-colors"
                                     style={{
                                         borderColor: 'var(--border-hairline)',
                                         background: 'var(--bg-surface)',
                                         color: 'var(--text-primary)',
+                                        borderRadius: 'var(--radius-sm)',
                                     }}
                                     onFocus={(event) => {
                                         event.currentTarget.style.borderColor =
-                                            '#A1A1AA'
+                                            'var(--border-strong)'
                                     }}
                                     onBlur={(event) => {
                                         event.currentTarget.style.borderColor =
@@ -417,7 +422,7 @@ export default function Vulnerabilities() {
                             <div>
                                 <label
                                     htmlFor="affected-asset"
-                                    className="mb-1.5 block text-[12px] font-medium"
+                                    className="mb-1.5 block text-[12px] font-bold uppercase tracking-wide"
                                     style={{ color: 'var(--text-secondary)' }}
                                 >
                                     Affected Asset
@@ -432,11 +437,12 @@ export default function Vulnerabilities() {
                                             assetId: event.target.value,
                                         })
                                     }
-                                    className="w-full rounded-md border px-3 py-2 text-[13px] outline-none"
+                                    className="w-full border-2 px-3 py-2.5 text-[13px] outline-none"
                                     style={{
                                         borderColor: 'var(--border-hairline)',
                                         background: 'var(--bg-surface)',
                                         color: 'var(--text-primary)',
+                                        borderRadius: 'var(--radius-sm)',
                                     }}
                                 >
                                     <option value="">Select asset</option>
@@ -453,7 +459,7 @@ export default function Vulnerabilities() {
                             <div>
                                 <label
                                     htmlFor="cvss-score"
-                                    className="mb-1.5 block text-[12px] font-medium"
+                                    className="mb-1.5 block text-[12px] font-bold uppercase tracking-wide"
                                     style={{ color: 'var(--text-secondary)' }}
                                 >
                                     CVSS Score
@@ -473,15 +479,16 @@ export default function Vulnerabilities() {
                                         })
                                     }
                                     placeholder="9.8"
-                                    className="font-data w-full rounded-md border px-3 py-2 text-[13px] outline-none transition-colors"
+                                    className="font-data w-full border-2 px-3 py-2.5 text-[13px] outline-none transition-colors"
                                     style={{
                                         borderColor: 'var(--border-hairline)',
                                         background: 'var(--bg-surface)',
                                         color: 'var(--text-primary)',
+                                        borderRadius: 'var(--radius-sm)',
                                     }}
                                     onFocus={(event) => {
                                         event.currentTarget.style.borderColor =
-                                            '#A1A1AA'
+                                            'var(--border-strong)'
                                     }}
                                     onBlur={(event) => {
                                         event.currentTarget.style.borderColor =
@@ -501,7 +508,7 @@ export default function Vulnerabilities() {
                             <div>
                                 <label
                                     htmlFor="control-effectiveness"
-                                    className="mb-1.5 block text-[12px] font-medium"
+                                    className="mb-1.5 block text-[12px] font-bold uppercase tracking-wide"
                                     style={{ color: 'var(--text-secondary)' }}
                                 >
                                     Control Effectiveness
@@ -522,15 +529,16 @@ export default function Vulnerabilities() {
                                         })
                                     }
                                     placeholder="0.2"
-                                    className="font-data w-full rounded-md border px-3 py-2 text-[13px] outline-none transition-colors"
+                                    className="font-data w-full border-2 px-3 py-2.5 text-[13px] outline-none transition-colors"
                                     style={{
                                         borderColor: 'var(--border-hairline)',
                                         background: 'var(--bg-surface)',
                                         color: 'var(--text-primary)',
+                                        borderRadius: 'var(--radius-sm)',
                                     }}
                                     onFocus={(event) => {
                                         event.currentTarget.style.borderColor =
-                                            '#A1A1AA'
+                                            'var(--border-strong)'
                                     }}
                                     onBlur={(event) => {
                                         event.currentTarget.style.borderColor =
@@ -566,7 +574,7 @@ export default function Vulnerabilities() {
                                     className="h-4 w-4 accent-black"
                                 />
 
-                                <span className="text-[13px]">
+                                <span className="text-[13px] font-medium">
                                     Exploit publicly available
                                 </span>
                             </label>
@@ -582,20 +590,21 @@ export default function Vulnerabilities() {
 
                         {/* Form actions */}
                         <div
-                            className="flex flex-col-reverse gap-2 border-t px-5 py-4 sm:flex-row sm:justify-end"
+                            className="flex flex-col-reverse gap-2 border-t-2 px-5 py-4 sm:flex-row sm:justify-end"
                             style={{
-                                borderColor: 'var(--border-hairline-soft)',
+                                borderColor: 'var(--border-strong)',
                             }}
                         >
                             <button
                                 type="button"
                                 onClick={closeForm}
                                 disabled={saving}
-                                className="rounded-md border px-4 py-2 text-[13px] font-medium"
+                                className="border-2 px-4 py-2.5 text-[13px] font-bold uppercase tracking-wide"
                                 style={{
-                                    borderColor: 'var(--border-hairline)',
+                                    borderColor: 'var(--border-strong)',
                                     background: 'var(--bg-surface)',
                                     color: 'var(--text-secondary)',
+                                    borderRadius: 'var(--radius-sm)',
                                 }}
                             >
                                 Cancel
@@ -604,7 +613,7 @@ export default function Vulnerabilities() {
                             <button
                                 type="submit"
                                 disabled={saving}
-                                className="rounded-md px-4 py-2 text-[13px] font-medium"
+                                className="px-4 py-2.5 text-[13px] font-bold uppercase tracking-wide"
                                 style={{
                                     background: saving
                                         ? 'var(--bg-surface-raised)'
@@ -612,6 +621,7 @@ export default function Vulnerabilities() {
                                     color: saving
                                         ? 'var(--text-tertiary)'
                                         : 'var(--text-inverse)',
+                                    borderRadius: 'var(--radius-sm)',
                                 }}
                             >
                                 {saving
@@ -626,22 +636,22 @@ export default function Vulnerabilities() {
 
                 {/* Inventory */}
                 <section
-                    className="mt-6 overflow-hidden rounded-lg border"
+                    className="mt-6 overflow-hidden border-2"
                     style={{
-                        borderColor: 'var(--border-hairline)',
+                        borderColor: 'var(--border-strong)',
                         background: 'var(--bg-surface)',
-                        boxShadow: 'var(--shadow-sm)',
+                        borderRadius: 'var(--radius-md)',
                     }}
                 >
                     <div
-                        className="flex items-center justify-between border-b px-5 py-4"
+                        className="flex items-center justify-between border-b-2 px-5 py-4"
                         style={{
-                            borderColor: 'var(--border-hairline-soft)',
+                            borderColor: 'var(--border-strong)',
                         }}
                     >
                         <div>
                             <h2
-                                className="text-sm font-semibold"
+                                className="text-base font-bold"
                                 style={{ color: 'var(--text-primary)' }}
                             >
                                 Vulnerability Inventory
@@ -658,7 +668,7 @@ export default function Vulnerabilities() {
 
                         {!loading && vulnerabilities.length > 0 && (
                             <span
-                                className="font-data text-[11px]"
+                                className="font-data text-[11px] font-semibold"
                                 style={{ color: 'var(--text-tertiary)' }}
                             >
                                 {vulnerabilities.length} total
@@ -682,18 +692,19 @@ export default function Vulnerabilities() {
                     ) : vulnerabilities.length === 0 ? (
                         <div className="px-6 py-14 text-center">
                             <div
-                                className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border"
+                                className="mx-auto flex h-10 w-10 items-center justify-center border-2"
                                 style={{
-                                    borderColor: 'var(--border-hairline)',
+                                    borderColor: 'var(--border-strong)',
                                     background: 'var(--bg-base)',
                                     color: 'var(--text-tertiary)',
+                                    borderRadius: 'var(--radius-sm)',
                                 }}
                             >
                                 <span className="text-sm">—</span>
                             </div>
 
                             <h3
-                                className="mt-3 text-sm font-medium"
+                                className="mt-3 text-sm font-semibold"
                                 style={{ color: 'var(--text-primary)' }}
                             >
                                 No vulnerabilities yet
@@ -711,12 +722,13 @@ export default function Vulnerabilities() {
                                 <button
                                     type="button"
                                     onClick={openCreate}
-                                    className="mt-4 rounded-md border px-3 py-2 text-[12px] font-medium"
+                                    className="mt-4 border-2 px-3 py-2 text-[12px] font-bold uppercase tracking-wide"
                                     style={{
                                         borderColor:
-                                            'var(--border-hairline)',
+                                            'var(--border-strong)',
                                         background: 'var(--bg-surface)',
                                         color: 'var(--text-primary)',
+                                        borderRadius: 'var(--radius-sm)',
                                     }}
                                 >
                                     Add first vulnerability
@@ -727,16 +739,15 @@ export default function Vulnerabilities() {
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-212.5 text-left">
                                 <thead
-                                    className="border-b"
+                                    className="border-b-2"
                                     style={{
-                                        borderColor:
-                                            'var(--border-hairline-soft)',
+                                        borderColor: 'var(--border-strong)',
                                         background: 'var(--bg-base)',
                                     }}
                                 >
                                     <tr>
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color: 'var(--text-tertiary)',
                                             }}
@@ -745,7 +756,7 @@ export default function Vulnerabilities() {
                                         </th>
 
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color: 'var(--text-tertiary)',
                                             }}
@@ -754,7 +765,7 @@ export default function Vulnerabilities() {
                                         </th>
 
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color: 'var(--text-tertiary)',
                                             }}
@@ -763,7 +774,7 @@ export default function Vulnerabilities() {
                                         </th>
 
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color: 'var(--text-tertiary)',
                                             }}
@@ -772,7 +783,7 @@ export default function Vulnerabilities() {
                                         </th>
 
                                         <th
-                                            className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color: 'var(--text-tertiary)',
                                             }}
@@ -781,7 +792,7 @@ export default function Vulnerabilities() {
                                         </th>
 
                                         <th
-                                            className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide"
+                                            className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wide"
                                             style={{
                                                 color: 'var(--text-tertiary)',
                                             }}
@@ -803,7 +814,7 @@ export default function Vulnerabilities() {
                                                 className="border-b last:border-0 transition-colors duration-100"
                                                 style={{
                                                     borderColor:
-                                                        'var(--border-hairline-soft)',
+                                                        'var(--border-hairline)',
                                                 }}
                                                 onMouseEnter={(event) => {
                                                     event.currentTarget.style.background =
@@ -818,7 +829,7 @@ export default function Vulnerabilities() {
                                                 <td className="px-5 py-4">
                                                     <div>
                                                         <div
-                                                            className="text-[13px] font-medium"
+                                                            className="text-[13px] font-semibold"
                                                             style={{
                                                                 color:
                                                                     'var(--text-primary)',
@@ -869,7 +880,7 @@ export default function Vulnerabilities() {
                                                 {/* CVSS */}
                                                 <td className="px-5 py-4">
                                                     <span
-                                                        className="font-data inline-flex rounded-full px-2 py-1 text-[10px] font-medium"
+                                                        className="font-data inline-flex rounded-full px-2 py-1 text-[10px] font-bold"
                                                         style={{
                                                             background:
                                                                 cvssStyle.background,
@@ -883,7 +894,7 @@ export default function Vulnerabilities() {
                                                 {/* Exploit */}
                                                 <td className="px-5 py-4">
                                                     <span
-                                                        className="inline-flex items-center gap-1.5 text-[12px]"
+                                                        className="inline-flex items-center gap-1.5 text-[12px] font-medium"
                                                         style={{
                                                             color:
                                                                 vulnerability.exploitAvailable
@@ -935,7 +946,7 @@ export default function Vulnerabilities() {
                                                         </div>
 
                                                         <span
-                                                            className="font-data text-[11px]"
+                                                            className="font-data text-[11px] font-semibold"
                                                             style={{
                                                                 color:
                                                                     'var(--text-secondary)',
@@ -957,7 +968,7 @@ export default function Vulnerabilities() {
                                                         onClick={() =>
                                                             openEdit(vulnerability)
                                                         }
-                                                        className="mr-4 text-[12px] font-medium"
+                                                        className="mr-4 text-[12px] font-bold"
                                                         style={{
                                                             color:
                                                                 'var(--text-secondary)',
@@ -977,7 +988,7 @@ export default function Vulnerabilities() {
                                                             deletingId ===
                                                             vulnerability.id
                                                         }
-                                                        className="text-[12px] font-medium"
+                                                        className="text-[12px] font-bold"
                                                         style={{
                                                             color:
                                                                 deletingId ===

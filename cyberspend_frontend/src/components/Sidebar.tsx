@@ -56,25 +56,26 @@ const NAV_ITEMS = [
 export default function Sidebar() {
   return (
     <aside
-      className="flex h-screen w-60 shrink-0 flex-col border-r"
+      className="flex h-screen w-64 shrink-0 flex-col border-r-2"
       style={{
-        borderColor: 'var(--border-hairline)',
+        borderColor: 'var(--border-strong)',
         background: 'var(--bg-surface)',
       }}
     >
       {/* Brand */}
       <div
-        className="flex h-16 shrink-0 items-center border-b px-5"
+        className="flex h-16 shrink-0 items-center border-b-2 px-5"
         style={{
-          borderColor: 'var(--border-hairline-soft)',
+          borderColor: 'var(--border-strong)',
         }}
       >
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <div
-            className="flex h-7 w-7 items-center justify-center rounded-md text-xs font-semibold"
+            className="flex h-8 w-8 items-center justify-center text-sm font-bold"
             style={{
               background: 'var(--accent-action)',
               color: 'var(--text-inverse)',
+              borderRadius: 'var(--radius-sm)',
             }}
           >
             C
@@ -82,7 +83,7 @@ export default function Sidebar() {
 
           <div className="flex flex-col">
             <span
-              className="text-sm font-semibold tracking-tight"
+              className="text-[15px] font-bold tracking-tight"
               style={{
                 color: 'var(--text-primary)',
               }}
@@ -91,7 +92,7 @@ export default function Sidebar() {
             </span>
 
             <span
-              className="text-[10px]"
+              className="text-[10px] font-medium uppercase tracking-wider"
               style={{
                 color: 'var(--text-tertiary)',
               }}
@@ -105,7 +106,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-5">
         <div
-          className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider"
+          className="mb-3 px-3 text-[11px] font-bold uppercase tracking-wider"
           style={{
             color: 'var(--text-tertiary)',
           }}
@@ -113,18 +114,18 @@ export default function Sidebar() {
           Platform
         </div>
 
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-1">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
                 [
-                  'group flex items-center gap-3 rounded-md px-3 py-2',
-                  'text-[13px] transition-colors duration-150',
+                  'group flex items-center gap-3 border-l-4 px-3 py-2.5',
+                  'text-[14px] transition-colors duration-150',
                   isActive
-                    ? 'font-medium'
-                    : 'font-normal',
+                    ? 'font-bold'
+                    : 'font-medium',
                 ].join(' ')
               }
               style={({ isActive }) => ({
@@ -135,13 +136,17 @@ export default function Sidebar() {
                 background: isActive
                   ? 'var(--bg-surface-raised)'
                   : 'transparent',
+
+                borderColor: isActive
+                  ? 'var(--border-strong)'
+                  : 'transparent',
               })}
             >
               {({ isActive }) => (
                 <>
                   <Icon
-                    size={16}
-                    strokeWidth={isActive ? 2 : 1.7}
+                    size={18}
+                    strokeWidth={isActive ? 2.25 : 1.75}
                     style={{
                       opacity: isActive ? 1 : 0.75,
                     }}
@@ -160,22 +165,24 @@ export default function Sidebar() {
       {/* System Status */}
       <div className="px-3 pb-4">
         <div
-          className="rounded-lg border p-3"
+          className="border-2 p-3"
           style={{
-            borderColor: 'var(--border-hairline-soft)',
+            borderColor: 'var(--border-strong)',
             background: 'var(--bg-base)',
+            borderRadius: 'var(--radius-md)',
           }}
         >
           <div className="flex items-center gap-2">
             <span
-              className="h-1.5 w-1.5 rounded-full"
+              className="h-2 w-2 shrink-0"
               style={{
                 background: 'var(--risk-safe)',
+                borderRadius: '9999px',
               }}
             />
 
             <span
-              className="text-[11px] font-medium"
+              className="text-[12px] font-bold"
               style={{
                 color: 'var(--text-primary)',
               }}
@@ -185,7 +192,7 @@ export default function Sidebar() {
           </div>
 
           <p
-            className="mt-1.5 text-[10px] leading-relaxed"
+            className="mt-1.5 text-[10.5px] leading-relaxed"
             style={{
               color: 'var(--text-tertiary)',
             }}

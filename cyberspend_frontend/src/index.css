@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -8,9 +8,12 @@
   --bg-surface-raised: #F1F2F4;
   --bg-surface-hover: #F5F5F6;
 
-  /* Borders */
-  --border-hairline: #E4E5E7;
-  --border-hairline-soft: #ECEDEF;
+  /* Borders — brutalist: thicker, darker, more visible */
+  --border-hairline: #D8D9DC;
+  --border-hairline-soft: #E4E5E7;
+  --border-strong: #17181A;
+  --border-width: 2px;
+  --border-width-lg: 3px;
 
   /* Text */
   --text-primary: #17181A;
@@ -48,14 +51,14 @@
   --font-data: 'IBM Plex Mono', ui-monospace, SFMono-Regular,
     Menlo, Monaco, Consolas, monospace;
 
-  /* Radius */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+  /* Radius — brutalism keeps it sharp, minimalism keeps it subtle: small but not zero */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  /* Shadows — flat by default; used sparingly, no blurry soft glow */
+  --shadow-sm: none;
+  --shadow-md: 4px 4px 0 rgba(23, 24, 26, 0.08);
 }
 
 * {
@@ -78,10 +81,33 @@ body {
   background: var(--bg-base);
   color: var(--text-primary);
   font-family: var(--font-ui);
-  font-size: 16px;
-  line-height: 1.55;
+  font-size: 17px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings — brutalist weight, minimal tracking */
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.15rem;
 }
 
 /* Better default controls */
@@ -107,6 +133,27 @@ button:disabled {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+}
+
+/* Brutalist-minimal building blocks — reusable utility classes */
+
+.panel {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+.panel-soft {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+}
+
+.stat-value {
+  font-family: var(--font-data);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 /* Scrollbars */
@@ -144,7 +191,7 @@ button:disabled {
 /* Focus */
 
 :focus-visible {
-  outline: 2px solid #9CA3AF;
+  outline: 2px solid var(--text-primary);
   outline-offset: 2px;
 }
 
@@ -166,6 +213,6 @@ button:disabled {
 
 @media (max-width: 768px) {
   body {
-    font-size: 13px;
+    font-size: 14px;
   }
 }
