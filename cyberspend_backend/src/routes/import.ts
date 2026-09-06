@@ -94,47 +94,164 @@ function toNullableNumber(value: unknown): number | null {
 
 /*
 |--------------------------------------------------------------------------
+| Request normalization
+|--------------------------------------------------------------------------
+|
+| Accept both the current frontend payload and common wrapped/legacy
+| payloads so old and new frontend builds cannot trigger a false 400.
+|--------------------------------------------------------------------------
+*/
+
+function extractArrayPayload(body: unknown): Record<string, unknown>[] | null {
+    if (Array.isArray(body)) {
+        return body as Record<string, unknown>[]
+    }
+
+    if (!body || typeof body !== 'object') {
+        return null
+    }
+
+    const value = body as Record<string, unknown>
+
+    const candidates = [
+        value.data,
+        value.rows,
+        value.payload,
+        value.insiderThreat,
+        value.insiderThreatData,
+        value.insiderThreatEvents,
+        value.records,
+        value.items,
+    ]
+
+    for (const candidate of candidates) {
+        if (Array.isArray(candidate)) {
+            return candidate as Record<string, unknown>[]
+        }
+    }
+
+    // Accept a single insider row as a one-record import.
+    if (
+        'employeeDepartment' in value ||
+        'employee_department' in value ||
+        'employeePosition' in value ||
+        'employee_position' in value
+    ) {
+        return [value]
+    }
+
+    return null
+}
+
+function extractCompanyPayload(body: unknown): unknown {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return body
+    }
+
+    const value = body as Record<string, unknown>
+
+    for (const key of ['payload', 'data', 'company', 'importData']) {
+        const candidate = value[key]
+
+        if (
+            candidate &&
+            typeof candidate === 'object' &&
+            !Array.isArray(candidate)
+        ) {
+            const object = candidate as Record<string, unknown>
+
+            if (
+                'assets' in object ||
+                'vulnerabilities' in object ||
+                'controls' in object
+            ) {
+                return candidate
+            }
+        }
+    }
+
+    return body
+}
+
+function parseBooleanValue(value: unknown): boolean {
+    if (typeof value === 'boolean') {
+        return value
+    }
+
+    const normalized = String(value ?? '')
+        .trim()
+        .toLowerCase()
+
+    return ['true', '1', 'yes', 'y', 'on'].includes(normalized)
+}
+
+function parseCriticalityValue(
+    value: unknown,
+): 'Low' | 'Medium' | 'High' | 'Critical' {
+    const normalized = String(value ?? '')
+        .trim()
+        .toLowerCase()
+
+    if (normalized === 'critical') return 'Critical'
+    if (normalized === 'high') return 'High'
+    if (normalized === 'medium') return 'Medium'
+    return 'Low'
+}
+
+/*
+|--------------------------------------------------------------------------
 | Company Data Schemas
 |--------------------------------------------------------------------------
 */
 
 const assetSchema = z.object({
-    id: z.string().min(1),
-    name: z.string().min(1),
-    category: z.string().min(1),
-    value: z.number().nonnegative(),
-    criticality: z.enum([
-        'Low',
-        'Medium',
-        'High',
-        'Critical',
-    ]),
-    internetExposed: z.boolean(),
+    id: z.preprocess((value) => toText(value), z.string().min(1)),
+    name: z.preprocess((value) => toText(value), z.string().min(1)),
+    category: z.preprocess((value) => toText(value), z.string().min(1)),
+    value: z.preprocess(
+        (value) => toNumber(value),
+        z.number().finite().nonnegative(),
+    ),
+    criticality: z.preprocess(
+        parseCriticalityValue,
+        z.enum(['Low', 'Medium', 'High', 'Critical']),
+    ),
+    internetExposed: z.preprocess(parseBooleanValue, z.boolean()),
 })
 
 const vulnerabilitySchema = z.object({
-    id: z.string().min(1),
-    assetId: z.string().min(1),
-    name: z.string().min(1),
-    cvss: z.number().min(0).max(10),
-    exploitAvailable: z.boolean(),
-    controlEffectiveness: z.number().min(0).max(1),
+    id: z.preprocess((value) => toText(value), z.string().min(1)),
+    assetId: z.preprocess((value) => toText(value), z.string().min(1)),
+    name: z.preprocess((value) => toText(value), z.string().min(1)),
+    cvss: z.preprocess(
+        (value) => toNumber(value),
+        z.number().finite().min(0).max(10),
+    ),
+    exploitAvailable: z.preprocess(parseBooleanValue, z.boolean()),
+    controlEffectiveness: z.preprocess(
+        (value) => toNumber(value),
+        z.number().finite().min(0).max(1),
+    ),
     discoveredOn: z.coerce.date(),
 })
 
 const controlSchema = z.object({
-    id: z.string().min(1),
-    name: z.string().min(1),
-    category: z.string().min(1),
-    cost: z.number().nonnegative(),
-    riskReductionPct: z.number().min(0).max(1),
+    id: z.preprocess((value) => toText(value), z.string().min(1)),
+    name: z.preprocess((value) => toText(value), z.string().min(1)),
+    category: z.preprocess((value) => toText(value), z.string().min(1)),
+    cost: z.preprocess(
+        (value) => toNumber(value),
+        z.number().finite().nonnegative(),
+    ),
+    riskReductionPct: z.preprocess(
+        (value) => toNumber(value),
+        z.number().finite().min(0).max(1),
+    ),
 })
 
 const importSchema = z.object({
     assets: z.array(assetSchema).default([]),
-    vulnerabilities: z
-        .array(vulnerabilitySchema)
-        .default([]),
+    vulnerabilities: z.array(vulnerabilitySchema).default([]),
     controls: z.array(controlSchema).default([]),
 })
 
@@ -320,7 +437,7 @@ importRouter.post(
     async (req, res) => {
         try {
             const result =
-                importSchema.safeParse(req.body)
+                importSchema.safeParse(extractCompanyPayload(req.body))
 
             if (!result.success) {
                 const errors =
@@ -447,13 +564,13 @@ importRouter.post(
     async (req, res) => {
         try {
             const result =
-                importSchema.safeParse(req.body)
+                importSchema.safeParse(extractCompanyPayload(req.body))
 
             if (!result.success) {
                 return res.status(400).json({
                     success: false,
-                    error:
-                        result.error.flatten(),
+                    message: 'Company data validation failed.',
+                    error: result.error.flatten(),
                 })
             }
 
@@ -504,6 +621,7 @@ importRouter.post(
                             .values(
                                 data.assets,
                             )
+                            .onConflictDoNothing()
                     }
 
                     if (
@@ -517,6 +635,7 @@ importRouter.post(
                             .values(
                                 data.vulnerabilities,
                             )
+                            .onConflictDoNothing()
                     }
 
                     if (
@@ -528,6 +647,7 @@ importRouter.post(
                             .values(
                                 data.controls,
                             )
+                            .onConflictDoNothing()
                     }
                 },
             )
@@ -585,18 +705,7 @@ importRouter.post(
     '/insider-threat/validate',
     async (req, res) => {
         try {
-            const rawData =
-                Array.isArray(req.body)
-                    ? req.body
-                    : Array.isArray(req.body?.data)
-                        ? req.body.data
-                        : Array.isArray(req.body?.rows)
-                            ? req.body.rows
-                            : Array.isArray(
-                                req.body?.insiderThreat,
-                            )
-                                ? req.body.insiderThreat
-                                : null
+            const rawData = extractArrayPayload(req.body)
 
             if (!rawData) {
                 return res.status(400).json({
@@ -666,18 +775,7 @@ importRouter.post(
     '/insider-threat',
     async (req, res) => {
         try {
-            const rawData =
-                Array.isArray(req.body)
-                    ? req.body
-                    : Array.isArray(req.body?.data)
-                        ? req.body.data
-                        : Array.isArray(req.body?.rows)
-                            ? req.body.rows
-                            : Array.isArray(
-                                req.body?.insiderThreat,
-                            )
-                                ? req.body.insiderThreat
-                                : null
+            const rawData = extractArrayPayload(req.body)
 
             if (!rawData) {
                 return res.status(400).json({
@@ -737,6 +835,7 @@ importRouter.post(
                             insiderThreatEvents,
                         )
                         .values(rows)
+                        .onConflictDoNothing()
                 },
             )
 
