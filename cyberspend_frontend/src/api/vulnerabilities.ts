@@ -11,13 +11,13 @@ export interface Vulnerability {
 }
 
 export function getVulnerabilities() {
-    return apiFetch<Vulnerability[]>('/api/vulnerabilities')
+    return apiFetch<Vulnerability[]>('/vulnerabilities')
 }
 
 export function createVulnerability(
     vulnerability: Omit<Vulnerability, 'discoveredOn'>,
 ) {
-    return apiFetch<Vulnerability>('/api/vulnerabilities', {
+    return apiFetch<Vulnerability>('/vulnerabilities', {
         method: 'POST',
         body: JSON.stringify(vulnerability),
     })
@@ -30,7 +30,7 @@ export function updateVulnerability(
     >,
 ) {
     return apiFetch<Vulnerability>(
-        `/api/vulnerabilities/${id}`,
+        `/vulnerabilities/${id}`,
         {
             method: 'PUT',
             body: JSON.stringify(vulnerability),

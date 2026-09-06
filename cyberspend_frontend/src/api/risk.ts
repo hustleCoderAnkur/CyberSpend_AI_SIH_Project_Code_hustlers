@@ -16,5 +16,5 @@ export function getRiskSummary() {
 }
 
 export function getRisks() {
-    return apiFetch<RiskItem[]>('/api/risk')
+    return apiFetch<RiskItem[]>('/risk')
 }
