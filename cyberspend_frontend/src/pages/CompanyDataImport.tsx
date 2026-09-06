@@ -2202,7 +2202,7 @@ export default function CompanyDataImport() {
                         </div>
 
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[900px] text-left">
+                            <table className="w-full min-w-225 text-left">
                                 <thead>
                                     <tr
                                         className="border-b"
@@ -2230,7 +2230,7 @@ export default function CompanyDataImport() {
                                             {Object.entries(row).map(([key, value]) => (
                                                 <td
                                                     key={key}
-                                                    className="max-w-[260px] whitespace-nowrap px-4 py-3 text-xs"
+                                                    className="max-w-65 whitespace-nowrap px-4 py-3 text-xs"
                                                     style={{ color: 'var(--text-secondary)' }}
                                                 >
                                                     {String(value ?? '')}

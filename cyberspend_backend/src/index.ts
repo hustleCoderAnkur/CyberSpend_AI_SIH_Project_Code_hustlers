@@ -16,7 +16,12 @@ const PORT = process.env.PORT ?? 4000
 const CORS_ORIGIN = process.env.CORS_ORIGIN 
 
 app.use(cors({ origin: CORS_ORIGIN }))
-app.use(express.json())
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: '10mb',
+  }),
+)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'cyberspend-ai-backend' })
