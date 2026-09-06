@@ -5,7 +5,11 @@ export interface Asset {
     name: string
     category: string
     value: number
-    criticality: 'Low' | 'Medium' | 'High' | 'Critical'
+    criticality:
+    | 'Low'
+    | 'Medium'
+    | 'High'
+    | 'Critical'
     internetExposed: boolean
     createdAt: string
 }

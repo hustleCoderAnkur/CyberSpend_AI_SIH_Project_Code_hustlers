@@ -3,6 +3,7 @@ import {
     ShieldCheck,
     CheckCircle2,
     AlertTriangle,
+    RefreshCw,
 } from 'lucide-react'
 
 import {
@@ -21,36 +22,65 @@ const FRAMEWORKS = [
     'SEBI',
 ]
 
+function getCoverageStyle(coverage: number) {
+    if (coverage >= 80) {
+        return {
+            color: 'var(--risk-safe)',
+            background: 'var(--status-success-bg)',
+        }
+    }
+
+    if (coverage >= 50) {
+        return {
+            color: 'var(--risk-medium)',
+            background: 'var(--status-warning-bg)',
+        }
+    }
+
+    return {
+        color: 'var(--risk-critical)',
+        background: 'var(--status-danger-bg)',
+    }
+}
+
 export default function Compliance() {
-    const [mappings, setMappings] = useState<ComplianceMapping[]>([])
-    const [framework, setFramework] = useState('ISO 27001')
+    const [mappings, setMappings] = useState<
+        ComplianceMapping[]
+    >([])
+
+    const [framework, setFramework] =
+        useState('ISO 27001')
 
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
-    useEffect(() => {
-        async function loadCompliance() {
-            try {
-                setLoading(true)
-                setError('')
+    async function loadCompliance() {
+        try {
+            setLoading(true)
+            setError('')
 
-                const data = await getComplianceMappings()
+            const data = await getComplianceMappings()
 
-                setMappings(data)
-            } catch (err) {
-                console.error(err)
-                setError('Failed to load compliance mappings.')
-            } finally {
-                setLoading(false)
-            }
+            setMappings(data)
+        } catch (err) {
+            console.error(err)
+
+            setError(
+                'Failed to load compliance mappings. Please try again.',
+            )
+        } finally {
+            setLoading(false)
         }
+    }
 
+    useEffect(() => {
         loadCompliance()
     }, [])
 
     const frameworkRows = useMemo(() => {
         return mappings.map((item) => {
-            const clauses = item.frameworks[framework] ?? []
+            const clauses =
+                item.frameworks[framework] ?? []
 
             return {
                 ...item,
@@ -64,373 +94,708 @@ export default function Compliance() {
         (item) => item.covered,
     ).length
 
-    const gapCount = frameworkRows.length - coveredCount
+    const gapCount =
+        frameworkRows.length - coveredCount
 
     const coverage =
         frameworkRows.length > 0
             ? (coveredCount / frameworkRows.length) * 100
             : 0
 
+    const coverageStyle =
+        getCoverageStyle(coverage)
+
     return (
-        <div className="p-6">
-
-            {/* Header */}
-            <div className="mb-6">
-                <div className="flex items-center gap-2">
-                    <ShieldCheck
-                        size={18}
-                        style={{
-                            color: 'var(--accent-action)',
-                        }}
-                    />
-
-                    <h1
-                        className="text-xl font-semibold"
-                        style={{
-                            color: 'var(--text-primary)',
-                        }}
-                    >
-                        Compliance Mapping
-                    </h1>
-                </div>
-
-                <p
-                    className="mt-1 text-sm"
-                    style={{
-                        color: 'var(--text-secondary)',
-                    }}
-                >
-                    Map implemented security controls to major cybersecurity frameworks.
-                </p>
-            </div>
-
-            {/* Framework Selector */}
-            <div
-                className="rounded-lg border p-5"
-                style={{
-                    borderColor: 'var(--border-hairline)',
-                    background: 'var(--bg-surface)',
-                }}
-            >
-                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-
-                    <div>
-                        <label
-                            className="mb-2 block text-xs font-medium"
+        <div
+            className="min-h-screen"
+            style={{
+                background: 'var(--bg-base)',
+            }}
+        >
+            <div className="mx-auto w-full max-w-7xl px-6 py-7 lg:px-8">
+                {/* Header */}
+                <header>
+                    <div className="flex items-center gap-2">
+                        <ShieldCheck
+                            size={18}
+                            strokeWidth={1.8}
                             style={{
-                                color: 'var(--text-secondary)',
+                                color: 'var(--text-primary)',
                             }}
-                        >
-                            Compliance Framework
-                        </label>
+                        />
 
-                        <select
-                            value={framework}
-                            onChange={(event) =>
-                                setFramework(event.target.value)
-                            }
-                            className="min-w-60 rounded-md border px-3 py-2.5 text-sm outline-none"
+                        <h1
+                            className="text-xl font-semibold tracking-tight"
                             style={{
-                                borderColor: 'var(--border-hairline)',
-                                background: 'var(--bg-base)',
                                 color: 'var(--text-primary)',
                             }}
                         >
-                            {FRAMEWORKS.map((item) => (
-                                <option
-                                    key={item}
-                                    value={item}
-                                >
-                                    {item}
-                                </option>
-                            ))}
-                        </select>
+                            Compliance Mapping
+                        </h1>
                     </div>
 
-                    <div
-                        className="text-xs"
+                    <p
+                        className="mt-1 text-sm"
                         style={{
-                            color: 'var(--text-tertiary)',
+                            color: 'var(--text-secondary)',
                         }}
                     >
-                        Showing mappings for{' '}
-                        <span
-                            className="font-medium"
-                            style={{
-                                color: 'var(--text-secondary)',
-                            }}
-                        >
-                            {framework}
-                        </span>
-                    </div>
+                        Map implemented security controls to major
+                        cybersecurity frameworks.
+                    </p>
+                </header>
 
-                </div>
-            </div>
-
-            {/* Loading */}
-            {loading && (
-                <div
-                    className="mt-6 rounded-lg border p-6 text-sm"
+                {/* Framework selector */}
+                <section
+                    className="mt-6 rounded-lg border"
                     style={{
-                        borderColor: 'var(--border-hairline)',
+                        borderColor:
+                            'var(--border-hairline)',
                         background: 'var(--bg-surface)',
-                        color: 'var(--text-secondary)',
+                        boxShadow: 'var(--shadow-sm)',
                     }}
                 >
-                    Loading compliance mappings...
-                </div>
-            )}
-
-            {/* Error */}
-            {!loading && error && (
-                <div className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-                    {error}
-                </div>
-            )}
-
-            {/* Content */}
-            {!loading && !error && (
-                <>
-                    {/* Summary */}
-                    <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-
-                        {/* Coverage */}
-                        <div
-                            className="rounded-lg border p-4"
-                            style={{
-                                borderColor: 'var(--border-hairline)',
-                                background: 'var(--bg-surface)',
-                            }}
-                        >
-                            <p
-                                className="text-xs"
+                    <div className="flex flex-col gap-4 p-5 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <label
+                                htmlFor="compliance-framework"
+                                className="mb-1.5 block text-[12px] font-medium"
                                 style={{
-                                    color: 'var(--text-secondary)',
+                                    color:
+                                        'var(--text-secondary)',
                                 }}
                             >
-                                Framework Coverage
-                            </p>
+                                Compliance Framework
+                            </label>
 
-                            <p className="mt-2 text-3xl font-semibold text-emerald-400">
-                                {coverage.toFixed(0)}%
-                            </p>
-
-                            <div
-                                className="mt-3 h-2 overflow-hidden rounded-full"
+                            <select
+                                id="compliance-framework"
+                                value={framework}
+                                onChange={(event) =>
+                                    setFramework(event.target.value)
+                                }
+                                className="min-w-[240px] rounded-md border px-3 py-2.5 text-[13px] outline-none"
                                 style={{
-                                    background: 'var(--bg-surface-raised)',
+                                    borderColor:
+                                        'var(--border-hairline)',
+                                    background:
+                                        'var(--bg-surface)',
+                                    color:
+                                        'var(--text-primary)',
                                 }}
                             >
-                                <div
-                                    className="h-full rounded-full bg-emerald-400"
-                                    style={{
-                                        width: `${coverage}%`,
-                                    }}
-                                />
-                            </div>
+                                {FRAMEWORKS.map((item) => (
+                                    <option
+                                        key={item}
+                                        value={item}
+                                    >
+                                        {item}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
-                        {/* Covered */}
                         <div
-                            className="rounded-lg border p-4"
+                            className="text-[11px]"
                             style={{
-                                borderColor: 'var(--border-hairline)',
-                                background: 'var(--bg-surface)',
+                                color:
+                                    'var(--text-tertiary)',
                             }}
                         >
-                            <div className="flex items-center gap-2">
-                                <CheckCircle2
-                                    size={16}
-                                    className="text-emerald-400"
-                                />
-
-                                <p
-                                    className="text-xs"
-                                    style={{
-                                        color: 'var(--text-secondary)',
-                                    }}
-                                >
-                                    Covered Controls
-                                </p>
-                            </div>
-
-                            <p
-                                className="mt-2 text-3xl font-semibold"
+                            Showing mappings for{' '}
+                            <span
+                                className="font-medium"
                                 style={{
-                                    color: 'var(--text-primary)',
+                                    color:
+                                        'var(--text-secondary)',
                                 }}
                             >
-                                {coveredCount}
-                            </p>
-                        </div>
-
-                        {/* Gaps */}
-                        <div
-                            className="rounded-lg border p-4"
-                            style={{
-                                borderColor: 'var(--border-hairline)',
-                                background: 'var(--bg-surface)',
-                            }}
-                        >
-                            <div className="flex items-center gap-2">
-                                <AlertTriangle
-                                    size={16}
-                                    className="text-orange-400"
-                                />
-
-                                <p
-                                    className="text-xs"
-                                    style={{
-                                        color: 'var(--text-secondary)',
-                                    }}
-                                >
-                                    Mapping Gaps
-                                </p>
-                            </div>
-
-                            <p className="mt-2 text-3xl font-semibold text-orange-400">
-                                {gapCount}
-                            </p>
+                                {framework}
+                            </span>
                         </div>
                     </div>
+                </section>
 
-                    {/* Mapping Table */}
+                {/* Loading */}
+                {loading && (
+                    <>
+                        <div className="mt-6 grid gap-4 md:grid-cols-3">
+                            {Array.from({ length: 3 }).map(
+                                (_, index) => (
+                                    <div
+                                        key={index}
+                                        className="h-28 animate-pulse rounded-lg border"
+                                        style={{
+                                            borderColor:
+                                                'var(--border-hairline)',
+                                            background:
+                                                'var(--bg-surface)',
+                                        }}
+                                    />
+                                ),
+                            )}
+                        </div>
+
+                        <div
+                            className="mt-6 h-72 animate-pulse rounded-lg border"
+                            style={{
+                                borderColor:
+                                    'var(--border-hairline)',
+                                background:
+                                    'var(--bg-surface)',
+                            }}
+                        />
+                    </>
+                )}
+
+                {/* Error */}
+                {!loading && error && (
                     <div
-                        className="mt-6 overflow-hidden rounded-lg border"
+                        className="mt-6 rounded-lg border p-5"
                         style={{
-                            borderColor: 'var(--border-hairline)',
-                            background: 'var(--bg-surface)',
+                            borderColor: '#FECACA',
+                            background:
+                                'var(--status-danger-bg)',
                         }}
                     >
-                        <div
-                            className="border-b px-5 py-4"
-                            style={{
-                                borderColor: 'var(--border-hairline)',
-                            }}
-                        >
-                            <h2
-                                className="text-sm font-semibold"
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle
+                                size={17}
                                 style={{
-                                    color: 'var(--text-primary)',
+                                    color:
+                                        'var(--status-danger-text)',
                                 }}
-                            >
-                                Control Mapping
-                            </h2>
+                            />
 
-                            <p
-                                className="mt-1 text-xs"
-                                style={{
-                                    color: 'var(--text-tertiary)',
-                                }}
-                            >
-                                Security controls mapped against {framework}.
-                            </p>
-                        </div>
+                            <div>
+                                <p
+                                    className="text-[13px] font-medium"
+                                    style={{
+                                        color:
+                                            'var(--status-danger-text)',
+                                    }}
+                                >
+                                    Unable to load compliance data
+                                </p>
 
-                        {frameworkRows.length === 0 ? (
-                            <div
-                                className="px-5 py-10 text-center text-sm"
-                                style={{
-                                    color: 'var(--text-tertiary)',
-                                }}
-                            >
-                                No security controls found.
+                                <p
+                                    className="mt-1 text-[12px]"
+                                    style={{
+                                        color:
+                                            'var(--text-secondary)',
+                                    }}
+                                >
+                                    {error}
+                                </p>
+
+                                <button
+                                    type="button"
+                                    onClick={loadCompliance}
+                                    className="mt-4 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[12px] font-medium"
+                                    style={{
+                                        borderColor: '#FECACA',
+                                        background:
+                                            'var(--bg-surface)',
+                                        color:
+                                            'var(--text-primary)',
+                                    }}
+                                >
+                                    <RefreshCw size={13} />
+                                    Retry
+                                </button>
                             </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead>
-                                        <tr
-                                            className="border-b text-xs"
+                        </div>
+                    </div>
+                )}
+
+                {/* Content */}
+                {!loading && !error && (
+                    <>
+                        {/* Summary */}
+                        <div className="mt-6 grid gap-4 md:grid-cols-3">
+                            {/* Coverage */}
+                            <div
+                                className="rounded-lg border p-4"
+                                style={{
+                                    borderColor:
+                                        'var(--border-hairline)',
+                                    background:
+                                        'var(--bg-surface)',
+                                    boxShadow:
+                                        'var(--shadow-sm)',
+                                }}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <p
+                                        className="text-[12px] font-medium"
+                                        style={{
+                                            color:
+                                                'var(--text-secondary)',
+                                        }}
+                                    >
+                                        Framework Coverage
+                                    </p>
+
+                                    <span
+                                        className="rounded-full px-2 py-1 text-[10px] font-medium"
+                                        style={{
+                                            background:
+                                                coverageStyle.background,
+                                            color:
+                                                coverageStyle.color,
+                                        }}
+                                    >
+                                        {coverage >= 80
+                                            ? 'Strong'
+                                            : coverage >= 50
+                                                ? 'Partial'
+                                                : 'Low'}
+                                    </span>
+                                </div>
+
+                                <div className="mt-4 flex items-end gap-2">
+                                    <span
+                                        className="font-data text-3xl font-medium leading-none"
+                                        style={{
+                                            color:
+                                                coverageStyle.color,
+                                        }}
+                                    >
+                                        {coverage.toFixed(0)}%
+                                    </span>
+                                </div>
+
+                                <div
+                                    className="mt-4 h-1.5 overflow-hidden rounded-full"
+                                    style={{
+                                        background:
+                                            'var(--bg-surface-raised)',
+                                    }}
+                                >
+                                    <div
+                                        className="h-full rounded-full transition-all duration-300"
+                                        style={{
+                                            width: `${Math.min(
+                                                Math.max(coverage, 0),
+                                                100,
+                                            )}%`,
+                                            background:
+                                                coverageStyle.color,
+                                        }}
+                                    />
+                                </div>
+
+                                <p
+                                    className="mt-2 text-[11px]"
+                                    style={{
+                                        color:
+                                            'var(--text-tertiary)',
+                                    }}
+                                >
+                                    {coveredCount} of{' '}
+                                    {frameworkRows.length} controls
+                                    mapped
+                                </p>
+                            </div>
+
+                            {/* Covered */}
+                            <div
+                                className="rounded-lg border p-4"
+                                style={{
+                                    borderColor:
+                                        'var(--border-hairline)',
+                                    background:
+                                        'var(--bg-surface)',
+                                    boxShadow:
+                                        'var(--shadow-sm)',
+                                }}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle2
+                                            size={15}
                                             style={{
-                                                borderColor: 'var(--border-hairline)',
-                                                color: 'var(--text-tertiary)',
+                                                color:
+                                                    'var(--risk-safe)',
+                                            }}
+                                        />
+
+                                        <p
+                                            className="text-[12px] font-medium"
+                                            style={{
+                                                color:
+                                                    'var(--text-secondary)',
                                             }}
                                         >
-                                            <th className="px-5 py-3 font-medium">
-                                                Security Control
-                                            </th>
+                                            Covered Controls
+                                        </p>
+                                    </div>
 
-                                            <th className="px-5 py-3 font-medium">
-                                                Framework Reference
-                                            </th>
+                                    <span
+                                        className="font-data text-[11px]"
+                                        style={{
+                                            color:
+                                                'var(--text-tertiary)',
+                                        }}
+                                    >
+                                        {frameworkRows.length > 0
+                                            ? `${(
+                                                (coveredCount /
+                                                    frameworkRows.length) *
+                                                100
+                                            ).toFixed(0)}%`
+                                            : '0%'}
+                                    </span>
+                                </div>
 
-                                            <th className="px-5 py-3 font-medium">
-                                                Status
-                                            </th>
-                                        </tr>
-                                    </thead>
+                                <p
+                                    className="font-data mt-4 text-3xl font-medium leading-none"
+                                    style={{
+                                        color:
+                                            'var(--risk-safe)',
+                                    }}
+                                >
+                                    {coveredCount}
+                                </p>
 
-                                    <tbody>
-                                        {frameworkRows.map((item) => (
-                                            <tr
-                                                key={item.control}
-                                                className="border-b last:border-b-0"
-                                                style={{
-                                                    borderColor:
-                                                        'var(--border-hairline-soft)',
-                                                }}
-                                            >
-                                                <td
-                                                    className="px-5 py-4 text-sm font-medium"
+                                <p
+                                    className="mt-2 text-[11px]"
+                                    style={{
+                                        color:
+                                            'var(--text-tertiary)',
+                                    }}
+                                >
+                                    Controls with a framework mapping
+                                </p>
+                            </div>
+
+                            {/* Gaps */}
+                            <div
+                                className="rounded-lg border p-4"
+                                style={{
+                                    borderColor:
+                                        'var(--border-hairline)',
+                                    background:
+                                        'var(--bg-surface)',
+                                    boxShadow:
+                                        'var(--shadow-sm)',
+                                }}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <AlertTriangle
+                                            size={15}
+                                            style={{
+                                                color:
+                                                    'var(--risk-high)',
+                                            }}
+                                        />
+
+                                        <p
+                                            className="text-[12px] font-medium"
+                                            style={{
+                                                color:
+                                                    'var(--text-secondary)',
+                                            }}
+                                        >
+                                            Mapping Gaps
+                                        </p>
+                                    </div>
+
+                                    <span
+                                        className="rounded-full px-2 py-1 text-[10px] font-medium"
+                                        style={{
+                                            background:
+                                                gapCount > 0
+                                                    ? 'var(--status-warning-bg)'
+                                                    : 'var(--status-success-bg)',
+                                            color:
+                                                gapCount > 0
+                                                    ? 'var(--status-warning-text)'
+                                                    : 'var(--status-success-text)',
+                                        }}
+                                    >
+                                        {gapCount > 0
+                                            ? 'Needs attention'
+                                            : 'Complete'}
+                                    </span>
+                                </div>
+
+                                <p
+                                    className="font-data mt-4 text-3xl font-medium leading-none"
+                                    style={{
+                                        color:
+                                            gapCount > 0
+                                                ? 'var(--risk-high)'
+                                                : 'var(--risk-safe)',
+                                    }}
+                                >
+                                    {gapCount}
+                                </p>
+
+                                <p
+                                    className="mt-2 text-[11px]"
+                                    style={{
+                                        color:
+                                            'var(--text-tertiary)',
+                                    }}
+                                >
+                                    Controls without a framework mapping
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Mapping table */}
+                        <section
+                            className="mt-6 overflow-hidden rounded-lg border"
+                            style={{
+                                borderColor:
+                                    'var(--border-hairline)',
+                                background:
+                                    'var(--bg-surface)',
+                                boxShadow:
+                                    'var(--shadow-sm)',
+                            }}
+                        >
+                            <div
+                                className="flex flex-col gap-1 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                                style={{
+                                    borderColor:
+                                        'var(--border-hairline-soft)',
+                                }}
+                            >
+                                <div>
+                                    <h2
+                                        className="text-sm font-semibold"
+                                        style={{
+                                            color:
+                                                'var(--text-primary)',
+                                        }}
+                                    >
+                                        Control Mapping
+                                    </h2>
+
+                                    <p
+                                        className="mt-0.5 text-[11px]"
+                                        style={{
+                                            color:
+                                                'var(--text-tertiary)',
+                                        }}
+                                    >
+                                        Security controls mapped against{' '}
+                                        {framework}.
+                                    </p>
+                                </div>
+
+                                <span
+                                    className="font-data text-[11px]"
+                                    style={{
+                                        color:
+                                            'var(--text-tertiary)',
+                                    }}
+                                >
+                                    {frameworkRows.length} controls
+                                </span>
+                            </div>
+
+                            {frameworkRows.length === 0 ? (
+                                <div className="px-6 py-14 text-center">
+                                    <div
+                                        className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border"
+                                        style={{
+                                            borderColor:
+                                                'var(--border-hairline)',
+                                            background:
+                                                'var(--bg-base)',
+                                            color:
+                                                'var(--text-tertiary)',
+                                        }}
+                                    >
+                                        <ShieldCheck size={17} />
+                                    </div>
+
+                                    <h3
+                                        className="mt-3 text-sm font-medium"
+                                        style={{
+                                            color:
+                                                'var(--text-primary)',
+                                        }}
+                                    >
+                                        No security controls found
+                                    </h3>
+
+                                    <p
+                                        className="mt-1 text-[12px]"
+                                        style={{
+                                            color:
+                                                'var(--text-tertiary)',
+                                        }}
+                                    >
+                                        Add security controls to generate
+                                        compliance mappings.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[800px] text-left">
+                                        <thead
+                                            className="border-b"
+                                            style={{
+                                                borderColor:
+                                                    'var(--border-hairline-soft)',
+                                                background:
+                                                    'var(--bg-base)',
+                                            }}
+                                        >
+                                            <tr>
+                                                <th
+                                                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
                                                     style={{
-                                                        color: 'var(--text-primary)',
+                                                        color:
+                                                            'var(--text-tertiary)',
                                                     }}
                                                 >
-                                                    {item.control}
-                                                </td>
+                                                    Security Control
+                                                </th>
 
-                                                <td className="px-5 py-4">
-                                                    {item.covered ? (
-                                                        <div className="space-y-1">
-                                                            {item.clauses.map((clause) => (
-                                                                <div
-                                                                    key={clause}
-                                                                    className="text-sm"
-                                                                    style={{
-                                                                        color:
-                                                                            'var(--text-secondary)',
-                                                                    }}
-                                                                >
-                                                                    {clause}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <span
-                                                            className="text-sm"
+                                                <th
+                                                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                                    style={{
+                                                        color:
+                                                            'var(--text-tertiary)',
+                                                    }}
+                                                >
+                                                    Framework Reference
+                                                </th>
+
+                                                <th
+                                                    className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide"
+                                                    style={{
+                                                        color:
+                                                            'var(--text-tertiary)',
+                                                    }}
+                                                >
+                                                    Status
+                                                </th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {frameworkRows.map((item) => (
+                                                <tr
+                                                    key={item.control}
+                                                    className="border-b last:border-0 transition-colors duration-100"
+                                                    style={{
+                                                        borderColor:
+                                                            'var(--border-hairline-soft)',
+                                                    }}
+                                                    onMouseEnter={(event) => {
+                                                        event.currentTarget.style.background =
+                                                            'var(--bg-surface-hover)'
+                                                    }}
+                                                    onMouseLeave={(event) => {
+                                                        event.currentTarget.style.background =
+                                                            'transparent'
+                                                    }}
+                                                >
+                                                    <td className="px-5 py-4 align-top">
+                                                        <div
+                                                            className="text-[13px] font-medium"
                                                             style={{
                                                                 color:
-                                                                    'var(--text-tertiary)',
+                                                                    'var(--text-primary)',
                                                             }}
                                                         >
-                                                            No mapping available
-                                                        </span>
-                                                    )}
-                                                </td>
+                                                            {item.control}
+                                                        </div>
+                                                    </td>
 
-                                                <td className="px-5 py-4">
-                                                    {item.covered ? (
-                                                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400">
-                                                            <CheckCircle2 size={12} />
-                                                            Covered
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-[11px] font-medium text-orange-400">
-                                                            <AlertTriangle size={12} />
-                                                            Gap
-                                                        </span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                </>
-            )}
+                                                    <td className="px-5 py-4 align-top">
+                                                        {item.covered ? (
+                                                            <div className="space-y-1.5">
+                                                                {item.clauses.map(
+                                                                    (clause) => (
+                                                                        <div
+                                                                            key={clause}
+                                                                            className="flex items-start gap-2"
+                                                                        >
+                                                                            <span
+                                                                                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                                                                                style={{
+                                                                                    background:
+                                                                                        'var(--text-tertiary)',
+                                                                                }}
+                                                                            />
+
+                                                                            <span
+                                                                                className="text-[12px]"
+                                                                                style={{
+                                                                                    color:
+                                                                                        'var(--text-secondary)',
+                                                                                }}
+                                                                            >
+                                                                                {clause}
+                                                                            </span>
+                                                                        </div>
+                                                                    ),
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span
+                                                                className="text-[12px]"
+                                                                style={{
+                                                                    color:
+                                                                        'var(--text-tertiary)',
+                                                                }}
+                                                            >
+                                                                No mapping available
+                                                            </span>
+                                                        )}
+                                                    </td>
+
+                                                    <td className="px-5 py-4 align-top">
+                                                        {item.covered ? (
+                                                            <span
+                                                                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium"
+                                                                style={{
+                                                                    background:
+                                                                        'var(--status-success-bg)',
+                                                                    color:
+                                                                        'var(--status-success-text)',
+                                                                }}
+                                                            >
+                                                                <CheckCircle2
+                                                                    size={11}
+                                                                />
+                                                                Covered
+                                                            </span>
+                                                        ) : (
+                                                            <span
+                                                                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium"
+                                                                style={{
+                                                                    background:
+                                                                        'var(--status-warning-bg)',
+                                                                    color:
+                                                                        'var(--status-warning-text)',
+                                                                }}
+                                                            >
+                                                                <AlertTriangle
+                                                                    size={11}
+                                                                />
+                                                                Gap
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </section>
+                    </>
+                )}
+            </div>
         </div>
     )
 }

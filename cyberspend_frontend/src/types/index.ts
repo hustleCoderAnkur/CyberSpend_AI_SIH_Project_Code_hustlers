@@ -1,4 +1,8 @@
-export type Criticality = 'Low' | 'Medium' | 'High' | 'Critical'
+export type Criticality =
+  | 'Low'
+  | 'Medium'
+  | 'High'
+  | 'Critical'
 
 export interface Asset {
   id: string
@@ -15,7 +19,7 @@ export interface Vulnerability {
   name: string
   cvss: number
   exploitAvailable: boolean
-  controlEffectiveness: number // 0-1, how much current controls mitigate
+  controlEffectiveness: number // 0-1
   discoveredOn: string
 }
 
@@ -33,7 +37,7 @@ export interface RiskItem {
 export interface Control {
   id: string
   name: string
-  cost: number // INR
-  riskReductionPct: number // 0-1, avg reduction applied
   category: string
+  cost: number // INR
+  riskReductionPct: number // 0-1
 }

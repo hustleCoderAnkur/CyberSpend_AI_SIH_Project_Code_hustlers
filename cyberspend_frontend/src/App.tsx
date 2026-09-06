@@ -1,4 +1,11 @@
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import {
+  HashRouter,
+  Navigate,
+  Route,
+  Routes,
+} from 'react-router-dom'
+
 import WhatIf from './pages/WhatIf'
 import Sidebar from './components/Sidebar'
 import RiskAnalysis from './pages/RiskAnalysis'
@@ -10,70 +17,157 @@ import Optimizer from './pages/Optimizer'
 import Compliance from './pages/Compliance'
 import CompanyDataImport from './pages/CompanyDataImport'
 
+const IMPORT_STORAGE_KEY = 'cyberspend_import_completed'
+
+function ProtectedRoute({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const [checking, setChecking] = useState(true)
+  const [importCompleted, setImportCompleted] = useState(false)
+
+  useEffect(() => {
+    const completed =
+      localStorage.getItem(IMPORT_STORAGE_KEY) === 'true'
+
+    setImportCompleted(completed)
+    setChecking(false)
+  }, [])
+
+  if (checking) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{
+          background: 'var(--bg-base)',
+          color: 'var(--text-secondary)',
+        }}
+      >
+        <span className="text-sm">
+          Loading...
+        </span>
+      </div>
+    )
+  }
+
+  if (!importCompleted) {
+    return <Navigate to="/" replace />
+  }
+
+  return children
+}
+
+function ApplicationLayout() {
+  return (
+    <div
+      className="flex min-h-screen"
+      style={{
+        background: 'var(--bg-base)',
+      }}
+    >
+      <Sidebar />
+
+      <main className="min-w-0 flex-1 overflow-y-auto">
+        <Routes>
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/assets"
+            element={
+              <ProtectedRoute>
+                <Assets />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/vulnerabilities"
+            element={
+              <ProtectedRoute>
+                <Vulnerabilities />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/controls"
+            element={
+              <ProtectedRoute>
+                <Controls />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/risk-analysis"
+            element={
+              <ProtectedRoute>
+                <RiskAnalysis />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/optimizer"
+            element={
+              <ProtectedRoute>
+                <Optimizer />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/what-if"
+            element={
+              <ProtectedRoute>
+                <WhatIf />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/compliance"
+            element={
+              <ProtectedRoute>
+                <Compliance />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="*"
+            element={<Navigate to="/dashboard" replace />}
+          />
+        </Routes>
+      </main>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <HashRouter>
-      <div
-        className="flex h-screen"
-        style={{ background: 'var(--bg-base)' }}
-      >
-        <Sidebar />
+      <Routes>
+        {/* Import is the entry point and does not require access */}
+        <Route
+          path="/"
+          element={<CompanyDataImport />}
+        />
 
-        <main className="flex-1 overflow-y-auto">
-          <Routes>
-
-            <Route
-              path="/"
-              element={<CompanyDataImport />}
-            />
-
-            <Route
-              path="/dashboard"
-              element={<Dashboard />}
-            />
-
-            {/* Asset Management */}
-            <Route
-              path="/assets"
-              element={<Assets />}
-            />
-
-            {/* Vulnerability Management */}
-            <Route
-              path="/vulnerabilities"
-              element={<Vulnerabilities />}
-            />
-
-            {/* Security Controls */}
-            <Route
-              path="/controls"
-              element={<Controls />}
-            />
-
-            {/* Remaining modules */}
-            <Route
-              path="/risk-analysis"
-              element={<RiskAnalysis />}
-            />
-
-            <Route
-              path="/optimizer"
-              element={<Optimizer />}
-            />
-
-            <Route
-              path="/what-if"
-              element={<WhatIf />}
-            />
-
-            <Route
-              path="/compliance"
-              element={<Compliance />}
-            />
-
-          </Routes>
-        </main>
-      </div>
+        {/* Everything else goes through the application layout */}
+        <Route
+          path="*"
+          element={<ApplicationLayout />}
+        />
+      </Routes>
     </HashRouter>
   )
 }
