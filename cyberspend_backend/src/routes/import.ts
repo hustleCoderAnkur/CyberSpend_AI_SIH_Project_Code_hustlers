@@ -11,6 +11,93 @@ import {
 
 export const importRouter = Router()
 
+/*
+|--------------------------------------------------------------------------
+| Helpers
+|--------------------------------------------------------------------------
+*/
+
+function toNumber(value: unknown): number {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : 0
+    }
+
+    const parsed = Number(
+        String(value ?? '')
+            .replace(/,/g, '')
+            .replace(/%/g, '')
+            .trim(),
+    )
+
+    return Number.isFinite(parsed) ? parsed : 0
+}
+
+function toInteger(value: unknown): number {
+    return Math.trunc(toNumber(value))
+}
+
+function toBinary(value: unknown): number {
+    if (typeof value === 'boolean') {
+        return value ? 1 : 0
+    }
+
+    const normalized = String(value ?? '')
+        .trim()
+        .toLowerCase()
+
+    if (
+        normalized === 'true' ||
+        normalized === 'yes' ||
+        normalized === 'y' ||
+        normalized === '1'
+    ) {
+        return 1
+    }
+
+    return 0
+}
+
+function toBoolean(value: unknown): boolean {
+    if (typeof value === 'boolean') {
+        return value
+    }
+
+    const normalized = String(value ?? '')
+        .trim()
+        .toLowerCase()
+
+    return (
+        normalized === 'true' ||
+        normalized === 'yes' ||
+        normalized === 'y' ||
+        normalized === '1'
+    )
+}
+
+function toText(value: unknown): string {
+    return String(value ?? '').trim()
+}
+
+function toNullableNumber(value: unknown): number | null {
+    if (
+        value === null ||
+        value === undefined ||
+        String(value).trim() === ''
+    ) {
+        return null
+    }
+
+    const parsed = Number(value)
+
+    return Number.isFinite(parsed) ? parsed : null
+}
+
+/*
+|--------------------------------------------------------------------------
+| Company Data Schemas
+|--------------------------------------------------------------------------
+*/
+
 const assetSchema = z.object({
     id: z.string().min(1),
     name: z.string().min(1),
@@ -43,123 +130,184 @@ const controlSchema = z.object({
     riskReductionPct: z.number().min(0).max(1),
 })
 
-const insiderThreatSchema = z.object({
-    id: z.string().min(1),
-
-    employeeDepartment: z.string().min(1),
-    employeeCampus: z.string().min(1),
-    employeePosition: z.string().min(1),
-
-    employeeSeniorityYears: z
-        .number()
-        .int()
-        .nonnegative(),
-
-    isContractor: z
-        .number()
-        .int()
-        .min(0)
-        .max(1),
-
-    employeeClassification: z
-        .number()
-        .int(),
-
-    hasForeignCitizenship: z
-        .number()
-        .int()
-        .min(0)
-        .max(1),
-
-    hasCriminalRecord: z
-        .number()
-        .int()
-        .min(0)
-        .max(1),
-
-    hasMedicalHistory: z
-        .number()
-        .int()
-        .min(0)
-        .max(1),
-
-    employeeOriginCountry: z.string().min(1),
-
-    totalPrintedPages: z
-        .number()
-        .int()
-        .nonnegative(),
-
-    numPrintedPagesOffHours: z
-        .number()
-        .int()
-        .nonnegative(),
-
-    totalFilesBurned: z
-        .number()
-        .int()
-        .nonnegative(),
-
-    burnedFromOther: z
-        .number()
-        .int()
-        .min(0)
-        .max(1),
-
-    isAbroad: z
-        .number()
-        .int()
-        .min(0)
-        .max(1),
-
-    tripDayNumber: z
-        .number()
-        .finite()
-        .nullable()
-        .optional(),
-
-    hostilityCountryLevel: z
-        .number()
-        .int(),
-
-    numEntries: z
-        .number()
-        .int()
-        .nonnegative(),
-
-    numUniqueCampus: z
-        .number()
-        .int()
-        .nonnegative(),
-
-    lateExitFlag: z
-        .number()
-        .int()
-        .min(0)
-        .max(1),
-
-    entryDuringWeekend: z
-        .number()
-        .int()
-        .min(0)
-        .max(1),
-
-    isMalicious: z.boolean(),
-})
-
 const importSchema = z.object({
-    assets: z
-        .array(assetSchema)
-        .default([]),
-
+    assets: z.array(assetSchema).default([]),
     vulnerabilities: z
         .array(vulnerabilitySchema)
         .default([]),
-
-    controls: z
-        .array(controlSchema)
-        .default([]),
+    controls: z.array(controlSchema).default([]),
 })
+
+/*
+|--------------------------------------------------------------------------
+| Insider Threat Normalization
+|--------------------------------------------------------------------------
+*/
+
+function normalizeInsiderThreatRow(
+    row: Record<string, unknown>,
+    index: number,
+) {
+    return {
+        id:
+            toText(row.id) ||
+            `INS-${String(index + 1).padStart(6, '0')}`,
+
+        employeeDepartment: toText(
+            row.employeeDepartment,
+        ),
+
+        employeeCampus: toText(
+            row.employeeCampus,
+        ),
+
+        employeePosition: toText(
+            row.employeePosition,
+        ),
+
+        employeeSeniorityYears: toInteger(
+            row.employeeSeniorityYears,
+        ),
+
+        isContractor: toBinary(
+            row.isContractor,
+        ),
+
+        employeeClassification: toInteger(
+            row.employeeClassification,
+        ),
+
+        hasForeignCitizenship: toBinary(
+            row.hasForeignCitizenship,
+        ),
+
+        hasCriminalRecord: toBinary(
+            row.hasCriminalRecord,
+        ),
+
+        hasMedicalHistory: toBinary(
+            row.hasMedicalHistory,
+        ),
+
+        employeeOriginCountry: toText(
+            row.employeeOriginCountry,
+        ),
+
+        totalPrintedPages: toInteger(
+            row.totalPrintedPages,
+        ),
+
+        numPrintedPagesOffHours: toInteger(
+            row.numPrintedPagesOffHours,
+        ),
+
+        totalFilesBurned: toInteger(
+            row.totalFilesBurned,
+        ),
+
+        burnedFromOther: toBinary(
+            row.burnedFromOther,
+        ),
+
+        isAbroad: toBinary(
+            row.isAbroad,
+        ),
+
+        tripDayNumber: toNullableNumber(
+            row.tripDayNumber,
+        ),
+
+        hostilityCountryLevel: toInteger(
+            row.hostilityCountryLevel,
+        ),
+
+        numEntries: toInteger(
+            row.numEntries,
+        ),
+
+        numUniqueCampus: toInteger(
+            row.numUniqueCampus,
+        ),
+
+        lateExitFlag: toBinary(
+            row.lateExitFlag,
+        ),
+
+        entryDuringWeekend: toBinary(
+            row.entryDuringWeekend,
+        ),
+
+        isMalicious: toBoolean(
+            row.isMalicious,
+        ),
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Insider Threat Validation
+|--------------------------------------------------------------------------
+*/
+
+function validateInsiderThreatRows(
+    rows: Record<string, unknown>[],
+) {
+    const errors: Array<{
+        field: string
+        message: string
+        details?: unknown
+    }> = []
+
+    const ids = new Set<string>()
+
+    rows.forEach((rawRow, index) => {
+        const rowNumber = index + 2
+
+        const row = normalizeInsiderThreatRow(
+            rawRow,
+            index,
+        )
+
+        if (!row.employeeDepartment) {
+            errors.push({
+                field: `rows.${index}.employeeDepartment`,
+                message: `Row ${rowNumber}: employee department is required.`,
+            })
+        }
+
+        if (!row.employeeCampus) {
+            errors.push({
+                field: `rows.${index}.employeeCampus`,
+                message: `Row ${rowNumber}: employee campus is required.`,
+            })
+        }
+
+        if (!row.employeePosition) {
+            errors.push({
+                field: `rows.${index}.employeePosition`,
+                message: `Row ${rowNumber}: employee position is required.`,
+            })
+        }
+
+        if (!row.employeeOriginCountry) {
+            errors.push({
+                field: `rows.${index}.employeeOriginCountry`,
+                message: `Row ${rowNumber}: employee origin country is required.`,
+            })
+        }
+
+        if (ids.has(row.id)) {
+            errors.push({
+                field: `rows.${index}.id`,
+                message: `Row ${rowNumber}: duplicate ID "${row.id}".`,
+            })
+        }
+
+        ids.add(row.id)
+    })
+
+    return errors
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -167,175 +315,97 @@ const importSchema = z.object({
 |--------------------------------------------------------------------------
 */
 
-importRouter.post('/validate', async (req, res) => {
-    const result = importSchema.safeParse(req.body)
+importRouter.post(
+    '/validate',
+    async (req, res) => {
+        try {
+            const result =
+                importSchema.safeParse(req.body)
 
-    if (!result.success) {
-        const errors = result.error.issues.map(
-            (issue) => ({
-                field: issue.path.join('.'),
-                message: issue.message,
-            }),
-        )
-
-        return res.status(400).json({
-            valid: false,
-            errors,
-        })
-    }
-
-    const data = result.data
-
-    const assetIds = new Set<string>()
-    const duplicateAssetIds: string[] = []
-
-    for (const asset of data.assets) {
-        if (assetIds.has(asset.id)) {
-            duplicateAssetIds.push(asset.id)
-        }
-
-        assetIds.add(asset.id)
-    }
-
-    const uploadedAssetIds = new Set(
-        data.assets.map((asset) => asset.id),
-    )
-
-    const missingAssetReferences =
-        data.vulnerabilities
-            .filter(
-                (vulnerability) =>
-                    !uploadedAssetIds.has(
-                        vulnerability.assetId,
-                    ),
-            )
-            .map((vulnerability) => ({
-                vulnerabilityId:
-                    vulnerability.id,
-                assetId:
-                    vulnerability.assetId,
-            }))
-
-    const errors: Array<{
-        field: string
-        message: string
-        details?: unknown
-    }> = []
-
-    if (duplicateAssetIds.length > 0) {
-        errors.push({
-            field: 'assets.id',
-            message: `Duplicate asset IDs: ${duplicateAssetIds.join(', ')}`,
-        })
-    }
-
-    if (missingAssetReferences.length > 0) {
-        errors.push({
-            field: 'vulnerabilities.assetId',
-            message:
-                'Some vulnerabilities reference assets that are not present in the uploaded data.',
-            details:
-                missingAssetReferences,
-        })
-    }
-
-    return res.json({
-        valid: errors.length === 0,
-
-        totalRows:
-            data.assets.length +
-            data.vulnerabilities.length +
-            data.controls.length,
-
-        assets: data.assets.length,
-
-        vulnerabilities:
-            data.vulnerabilities.length,
-
-        controls: data.controls.length,
-
-        errors,
-    })
-})
-
-/*
-|--------------------------------------------------------------------------
-| POST /api/import
-|--------------------------------------------------------------------------
-*/
-
-importRouter.post('/', async (req, res) => {
-    const result = importSchema.safeParse(req.body)
-
-    if (!result.success) {
-        return res.status(400).json({
-            success: false,
-            error: result.error.flatten(),
-        })
-    }
-
-    const data = result.data
-
-    try {
-        const assetIds = new Set(
-            data.assets.map((asset) => asset.id),
-        )
-
-        const missingAssetReferences =
-            data.vulnerabilities.filter(
-                (vulnerability) =>
-                    !assetIds.has(
-                        vulnerability.assetId,
-                    ),
-            )
-
-        if (missingAssetReferences.length > 0) {
-            return res.status(400).json({
-                success: false,
-                error:
-                    'Some vulnerabilities reference assets that are not included in the import.',
-                details:
-                    missingAssetReferences.map(
-                        (vulnerability) => ({
-                            vulnerabilityId:
-                                vulnerability.id,
-                            assetId:
-                                vulnerability.assetId,
+            if (!result.success) {
+                const errors =
+                    result.error.issues.map(
+                        (issue) => ({
+                            field:
+                                issue.path.join('.'),
+                            message:
+                                issue.message,
                         }),
-                    ),
-            })
-        }
+                    )
 
-        await db.transaction(async (tx) => {
-            if (data.assets.length > 0) {
-                await tx
-                    .insert(assets)
-                    .values(data.assets)
+                return res.status(400).json({
+                    valid: false,
+                    errors,
+                })
+            }
+
+            const data = result.data
+
+            const assetIds = new Set<string>()
+
+            const duplicateAssetIds: string[] = []
+
+            for (const asset of data.assets) {
+                if (assetIds.has(asset.id)) {
+                    duplicateAssetIds.push(
+                        asset.id,
+                    )
+                }
+
+                assetIds.add(asset.id)
+            }
+
+            const missingAssetReferences =
+                data.vulnerabilities
+                    .filter(
+                        (vulnerability) =>
+                            !assetIds.has(
+                                vulnerability.assetId,
+                            ),
+                    )
+                    .map((vulnerability) => ({
+                        vulnerabilityId:
+                            vulnerability.id,
+                        assetId:
+                            vulnerability.assetId,
+                    }))
+
+            const errors: Array<{
+                field: string
+                message: string
+                details?: unknown
+            }> = []
+
+            if (duplicateAssetIds.length > 0) {
+                errors.push({
+                    field: 'assets.id',
+                    message:
+                        `Duplicate asset IDs: ${duplicateAssetIds.join(', ')}`,
+                })
             }
 
             if (
-                data.vulnerabilities.length > 0
+                missingAssetReferences.length >
+                0
             ) {
-                await tx
-                    .insert(vulnerabilities)
-                    .values(
-                        data.vulnerabilities,
-                    )
+                errors.push({
+                    field:
+                        'vulnerabilities.assetId',
+                    message:
+                        'Some vulnerabilities reference assets that are not present in the uploaded data.',
+                    details:
+                        missingAssetReferences,
+                })
             }
 
-            if (data.controls.length > 0) {
-                await tx
-                    .insert(controls)
-                    .values(data.controls)
-            }
-        })
+            return res.json({
+                valid: errors.length === 0,
 
-        return res.status(201).json({
-            success: true,
-            message:
-                'Company data imported successfully.',
+                totalRows:
+                    data.assets.length +
+                    data.vulnerabilities.length +
+                    data.controls.length,
 
-            imported: {
                 assets: data.assets.length,
 
                 vulnerabilities:
@@ -344,89 +414,232 @@ importRouter.post('/', async (req, res) => {
                 controls:
                     data.controls.length,
 
-                total:
-                    data.assets.length +
-                    data.vulnerabilities.length +
-                    data.controls.length,
-            },
-        })
-    } catch (error) {
-        console.error(
-            'Company data import failed:',
-            error,
-        )
+                errors,
+            })
+        } catch (error) {
+            console.error(
+                'Company validation failed:',
+                error,
+            )
 
-        return res.status(500).json({
-            success: false,
-            error:
-                'Failed to import company data.',
-        })
-    }
-})
+            return res.status(500).json({
+                valid: false,
+                errors: [
+                    {
+                        field: 'server',
+                        message:
+                            'Company data validation failed.',
+                    },
+                ],
+            })
+        }
+    },
+)
+
+/*
+|--------------------------------------------------------------------------
+| POST /api/import
+|--------------------------------------------------------------------------
+*/
+
+importRouter.post(
+    '/',
+    async (req, res) => {
+        try {
+            const result =
+                importSchema.safeParse(req.body)
+
+            if (!result.success) {
+                return res.status(400).json({
+                    success: false,
+                    error:
+                        result.error.flatten(),
+                })
+            }
+
+            const data = result.data
+
+            const assetIds = new Set(
+                data.assets.map(
+                    (asset) => asset.id,
+                ),
+            )
+
+            const missingAssetReferences =
+                data.vulnerabilities.filter(
+                    (vulnerability) =>
+                        !assetIds.has(
+                            vulnerability.assetId,
+                        ),
+                )
+
+            if (
+                missingAssetReferences.length >
+                0
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    error:
+                        'Some vulnerabilities reference assets that are not included in the import.',
+                    details:
+                        missingAssetReferences.map(
+                            (vulnerability) => ({
+                                vulnerabilityId:
+                                    vulnerability.id,
+                                assetId:
+                                    vulnerability.assetId,
+                            }),
+                        ),
+                })
+            }
+
+            await db.transaction(
+                async (tx) => {
+                    if (
+                        data.assets.length >
+                        0
+                    ) {
+                        await tx
+                            .insert(assets)
+                            .values(
+                                data.assets,
+                            )
+                    }
+
+                    if (
+                        data.vulnerabilities
+                            .length > 0
+                    ) {
+                        await tx
+                            .insert(
+                                vulnerabilities,
+                            )
+                            .values(
+                                data.vulnerabilities,
+                            )
+                    }
+
+                    if (
+                        data.controls.length >
+                        0
+                    ) {
+                        await tx
+                            .insert(controls)
+                            .values(
+                                data.controls,
+                            )
+                    }
+                },
+            )
+
+            return res.status(201).json({
+                success: true,
+
+                message:
+                    'Company data imported successfully.',
+
+                imported: {
+                    assets:
+                        data.assets.length,
+
+                    vulnerabilities:
+                        data.vulnerabilities
+                            .length,
+
+                    controls:
+                        data.controls.length,
+
+                    total:
+                        data.assets.length +
+                        data.vulnerabilities
+                            .length +
+                        data.controls.length,
+                },
+            })
+        } catch (error) {
+            console.error(
+                'Company data import failed:',
+                error,
+            )
+
+            return res.status(500).json({
+                success: false,
+                error:
+                    'Failed to import company data.',
+            })
+        }
+    },
+)
 
 /*
 |--------------------------------------------------------------------------
 | POST /api/import/insider-threat/validate
+|--------------------------------------------------------------------------
+|
+| Kept for frontend compatibility.
+| It NO LONGER uses strict raw Zod validation.
 |--------------------------------------------------------------------------
 */
 
 importRouter.post(
     '/insider-threat/validate',
     async (req, res) => {
-        const result = z
-            .array(insiderThreatSchema)
-            .safeParse(req.body)
-
-        if (!result.success) {
-            const errors =
-                result.error.issues.map(
-                    (issue) => ({
-                        field:
-                            issue.path.join('.'),
-                        message:
-                            issue.message,
-                    }),
-                )
-
-            return res.status(400).json({
-                valid: false,
-                errors,
-            })
-        }
-
-        const data = result.data
-
-        const ids = new Set<string>()
-        const duplicateIds: string[] = []
-
-        for (const row of data) {
-            if (ids.has(row.id)) {
-                duplicateIds.push(row.id)
+        try {
+            if (!Array.isArray(req.body)) {
+                return res.status(400).json({
+                    valid: false,
+                    totalRows: 0,
+                    insiderThreatEvents: 0,
+                    errors: [
+                        {
+                            field: 'body',
+                            message:
+                                'Insider threat data must be an array.',
+                        },
+                    ],
+                })
             }
 
-            ids.add(row.id)
-        }
+            const rows =
+                req.body as Record<
+                    string,
+                    unknown
+                >[]
 
-        const errors: Array<{
-            field: string
-            message: string
-        }> = []
+            const errors =
+                validateInsiderThreatRows(
+                    rows,
+                )
 
-        if (duplicateIds.length > 0) {
-            errors.push({
-                field: 'id',
-                message:
-                    `Duplicate insider threat IDs: ${duplicateIds.join(', ')}`,
+            return res.json({
+                valid: errors.length === 0,
+
+                totalRows: rows.length,
+
+                insiderThreatEvents:
+                    rows.length,
+
+                errors,
+            })
+        } catch (error) {
+            console.error(
+                'Insider threat validation failed:',
+                error,
+            )
+
+            return res.status(500).json({
+                valid: false,
+                totalRows: 0,
+                insiderThreatEvents: 0,
+                errors: [
+                    {
+                        field: 'server',
+                        message:
+                            'Insider threat validation failed.',
+                    },
+                ],
             })
         }
-
-        return res.json({
-            valid: errors.length === 0,
-            totalRows: data.length,
-            insiderThreatEvents:
-                data.length,
-            errors,
-        })
     },
 )
 
@@ -439,60 +652,79 @@ importRouter.post(
 importRouter.post(
     '/insider-threat',
     async (req, res) => {
-        const result = z
-            .array(insiderThreatSchema)
-            .safeParse(req.body)
-
-        if (!result.success) {
-            return res.status(400).json({
-                success: false,
-                error: result.error.flatten(),
-            })
-        }
-
-        const data = result.data
-
         try {
-            const ids = new Set<string>()
-            const duplicateIds: string[] = []
-
-            for (const row of data) {
-                if (ids.has(row.id)) {
-                    duplicateIds.push(row.id)
-                }
-
-                ids.add(row.id)
-            }
-
-            if (duplicateIds.length > 0) {
+            if (!Array.isArray(req.body)) {
                 return res.status(400).json({
                     success: false,
                     error:
-                        'Duplicate insider threat IDs found in the import.',
-                    details: duplicateIds,
+                        'Insider threat data must be an array.',
                 })
             }
 
-            await db.transaction(async (tx) => {
-                if (data.length > 0) {
+            const rawRows =
+                req.body as Record<
+                    string,
+                    unknown
+                >[]
+
+            if (rawRows.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error:
+                        'No insider threat records were provided.',
+                })
+            }
+
+            const validationErrors =
+                validateInsiderThreatRows(
+                    rawRows,
+                )
+
+            if (
+                validationErrors.length > 0
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    error:
+                        'Some insider threat records are invalid.',
+                    details:
+                        validationErrors.slice(
+                            0,
+                            20,
+                        ),
+                })
+            }
+
+            const rows =
+                rawRows.map(
+                    (row, index) =>
+                        normalizeInsiderThreatRow(
+                            row,
+                            index,
+                        ),
+                )
+
+            await db.transaction(
+                async (tx) => {
                     await tx
                         .insert(
                             insiderThreatEvents,
                         )
-                        .values(data)
-                }
-            })
+                        .values(rows)
+                },
+            )
 
             return res.status(201).json({
                 success: true,
+
                 message:
                     'Insider threat data imported successfully.',
 
                 imported: {
                     insiderThreatEvents:
-                        data.length,
+                        rows.length,
 
-                    total: data.length,
+                    total: rows.length,
                 },
             })
         } catch (error) {
