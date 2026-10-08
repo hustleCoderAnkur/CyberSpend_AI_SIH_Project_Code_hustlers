@@ -1420,86 +1420,7 @@ export default function CompanyDataImport() {
                     </div>
                 </header>
 
-                <section
-                    className="rounded-xl border p-5 md:p-6"
-                    style={{
-                        borderColor: 'var(--border-hairline)',
-                        background: 'var(--bg-surface)',
-                    }}
-                >
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                            <ShieldCheck
-                                size={17}
-                                style={{ color: 'var(--text-secondary)' }}
-                            />
-                            <h2
-                                className="text-sm font-semibold"
-                                style={{ color: 'var(--text-primary)' }}
-                            >
-                                What data can I upload?
-                            </h2>
-                        </div>
 
-                        <p
-                            className="text-xs leading-relaxed"
-                            style={{ color: 'var(--text-secondary)' }}
-                        >
-                            Any valid CSV or JSON dataset can be uploaded. The categories below are
-                            examples of datasets that CyberSpend AI can recognize and analyze.
-                        </p>
-                    </div>
-
-                    <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-                        {DATA_TYPES.map((item) => (
-                            <div
-                                key={`supported-${item.value}`}
-                                className="border p-3"
-                                style={{
-                                    borderColor: 'var(--border-hairline-soft)',
-                                    background: 'var(--bg-base)',
-                                }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <div
-                                        className="flex h-7 w-7 shrink-0 items-center justify-center"
-                                        style={{
-                                            background: 'var(--bg-surface)',
-                                            color: 'var(--text-secondary)',
-                                        }}
-                                    >
-                                        <DatasetIcon type={item.value} />
-                                    </div>
-                                    <p
-                                        className="text-xs font-semibold"
-                                        style={{ color: 'var(--text-primary)' }}
-                                    >
-                                        {item.label}
-                                    </p>
-                                </div>
-
-                                <p
-                                    className="mt-2 text-[11px] leading-relaxed"
-                                    style={{ color: 'var(--text-tertiary)' }}
-                                >
-                                    {item.description}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div
-                        className="mt-4 grid gap-2 border-t pt-4 text-[11px] md:grid-cols-3"
-                        style={{
-                            borderColor: 'var(--border-hairline-soft)',
-                            color: 'var(--text-tertiary)',
-                        }}
-                    >
-                        <p><span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>Formats:</span> CSV, JSON</p>
-                        <p><span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>Field names:</span> Common variations are recognized</p>
-                        <p><span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>Unknown data:</span> Preserved without rejection</p>
-                    </div>
-                </section>
 
                 <section>
                     <div className="mt-10 mb-3 flex items-center justify-between">
@@ -1509,6 +1430,7 @@ export default function CompanyDataImport() {
                         >
                             Security datasets
                         </h2>
+                        
 
                         <span
                             className="text-xs"
