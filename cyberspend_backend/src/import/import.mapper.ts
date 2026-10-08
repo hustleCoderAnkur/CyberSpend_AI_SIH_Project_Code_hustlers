@@ -8,11 +8,15 @@ const DATASET_TYPES: DatasetType[] = [
     'vulnerabilities',
     'controls',
     'insiderThreat',
+    'generic',
 ]
 
 type AliasMap = Record<string, string[]>
 
-const FIELD_ALIASES: Record<DatasetType, AliasMap> = {
+const FIELD_ALIASES: Record<
+    Exclude<DatasetType, 'generic'>,
+    AliasMap
+> = {
     assets: {
         id: [
             'id',
@@ -417,12 +421,6 @@ function normalizeKey(value: unknown): string {
         .replace(/^_+|_+$/g, '')
 }
 
-function normalizeText(value: unknown): string {
-    return String(value ?? '')
-        .trim()
-        .toLowerCase()
-}
-
 function hasValue(value: unknown): boolean {
     return (
         value !== undefined &&
@@ -431,10 +429,14 @@ function hasValue(value: unknown): boolean {
     )
 }
 
-function getAliasMap(type: DatasetType): Map<string, string> {
+function getAliasMap(
+    type: Exclude<DatasetType, 'generic'>,
+): Map<string, string> {
     const map = new Map<string, string>()
 
-    for (const [canonical, aliases] of Object.entries(FIELD_ALIASES[type])) {
+    for (const [canonical, aliases] of Object.entries(
+        FIELD_ALIASES[type],
+    )) {
         for (const alias of aliases) {
             map.set(normalizeKey(alias), canonical)
         }
@@ -445,15 +447,21 @@ function getAliasMap(type: DatasetType): Map<string, string> {
 
 function findCanonicalField(
     key: string,
-    type: DatasetType,
+    type: Exclude<DatasetType, 'generic'>,
 ): string | null {
     const normalizedKey = normalizeKey(key)
-    if (!normalizedKey) return null
+
+    if (!normalizedKey) {
+        return null
+    }
 
     const aliasMap = getAliasMap(type)
 
     const exact = aliasMap.get(normalizedKey)
-    if (exact) return exact
+
+    if (exact) {
+        return exact
+    }
 
     for (const [alias, canonical] of aliasMap.entries()) {
         if (
@@ -470,19 +478,21 @@ function findCanonicalField(
 
 function mapRow(
     row: RawImportRow,
-    type: DatasetType,
+    type: Exclude<DatasetType, 'generic'>,
 ): RawImportRow {
     const mapped: RawImportRow = {}
 
     for (const [key, value] of Object.entries(row)) {
         const canonical = findCanonicalField(key, type)
 
-        if (!canonical) continue
-        if (!hasValue(value)) continue
+        if (!canonical) {
+            continue
+        }
 
-        /*
-         * Do not overwrite a better exact mapping with a fuzzy mapping.
-         */
+        if (!hasValue(value)) {
+            continue
+        }
+
         if (!hasValue(mapped[canonical])) {
             mapped[canonical] = value
         }
@@ -491,15 +501,19 @@ function mapRow(
     return mapped
 }
 
-function countMeaningfulFields(row: RawImportRow): number {
+function countMeaningfulFields(
+    row: RawImportRow,
+): number {
     return Object.values(row).filter(hasValue).length
 }
 
 function isMeaningfulDatasetRow(
     row: RawImportRow,
-    type: DatasetType,
+    type: Exclude<DatasetType, 'generic'>,
 ): boolean {
-    if (countMeaningfulFields(row) === 0) return false
+    if (countMeaningfulFields(row) === 0) {
+        return false
+    }
 
     switch (type) {
         case 'assets':
@@ -547,14 +561,9 @@ function isMeaningfulDatasetRow(
     }
 }
 
-/*
- * IMPORTANT:
- * These identity checks deliberately avoid generic "name" and "id".
- * This prevents a control row from accidentally becoming a vulnerability
- * just because both datasets contain a "name" field.
- */
-
-function hasAssetIdentity(row: RawImportRow): boolean {
+function hasAssetIdentity(
+    row: RawImportRow,
+): boolean {
     return (
         hasValue(row.value) ||
         hasValue(row.category) ||
@@ -563,7 +572,9 @@ function hasAssetIdentity(row: RawImportRow): boolean {
     )
 }
 
-function hasVulnerabilityIdentity(row: RawImportRow): boolean {
+function hasVulnerabilityIdentity(
+    row: RawImportRow,
+): boolean {
     return (
         hasValue(row.cvss) ||
         hasValue(row.exploitAvailable) ||
@@ -572,7 +583,9 @@ function hasVulnerabilityIdentity(row: RawImportRow): boolean {
     )
 }
 
-function hasControlIdentity(row: RawImportRow): boolean {
+function hasControlIdentity(
+    row: RawImportRow,
+): boolean {
     return (
         hasValue(row.category) ||
         hasValue(row.cost) ||
@@ -580,7 +593,9 @@ function hasControlIdentity(row: RawImportRow): boolean {
     )
 }
 
-function hasInsiderIdentity(row: RawImportRow): boolean {
+function hasInsiderIdentity(
+    row: RawImportRow,
+): boolean {
     return (
         hasValue(row.employeeDepartment) ||
         hasValue(row.employeeCampus) ||
@@ -607,10 +622,24 @@ function hasInsiderIdentity(row: RawImportRow): boolean {
     )
 }
 
+function mapGenericRow(
+    row: RawImportRow,
+): RawImportRow | null {
+    if (countMeaningfulFields(row) === 0) {
+        return null
+    }
+
+    return { ...row }
+}
+
 export function mapRowToDataset(
     row: RawImportRow,
     type: DatasetType,
 ): RawImportRow | null {
+    if (type === 'generic') {
+        return mapGenericRow(row)
+    }
+
     const mapped = mapRow(row, type)
 
     if (!isMeaningfulDatasetRow(mapped, type)) {
@@ -625,51 +654,45 @@ export function mapRowsToDataset(
     type: DatasetType,
 ): RawImportRow[] {
     return rows
-        .map((row) => mapRowToDataset(row, type))
-        .filter((row): row is RawImportRow => row !== null)
+        .map((row) =>
+            mapRowToDataset(row, type),
+        )
+        .filter(
+            (row): row is RawImportRow =>
+                row !== null,
+        )
 }
 
-/*
- * A single physical CSV row can represent multiple logical datasets.
- *
- * Example:
- *
- * Asset Name | Asset Value | Vulnerability Name | CVSS | ...
- *
- * becomes:
- *
- * assets:
- *   { name, value, ... }
- *
- * vulnerabilities:
- *   { name, assetId, cvss, ... }
- *
- * Control-only rows are kept as controls and are NOT treated as
- * vulnerabilities.
- */
 export function mapMixedRow(
     row: RawImportRow,
 ): Partial<Record<DatasetType, RawImportRow>> {
-    const result: Partial<Record<DatasetType, RawImportRow>> = {}
+    const result: Partial<
+        Record<DatasetType, RawImportRow>
+    > = {}
 
     const asset = mapRow(row, 'assets')
-    const vulnerability = mapRow(row, 'vulnerabilities')
+    const vulnerability = mapRow(
+        row,
+        'vulnerabilities',
+    )
     const control = mapRow(row, 'controls')
-    const insiderThreat = mapRow(row, 'insiderThreat')
+    const insiderThreat = mapRow(
+        row,
+        'insiderThreat',
+    )
 
-    const hasAssetSpecificFields = hasAssetIdentity(asset)
-    const hasVulnerabilitySpecificFields = hasVulnerabilityIdentity(vulnerability)
-    const hasControlSpecificFields = hasControlIdentity(control)
-    const hasInsiderSpecificFields = hasInsiderIdentity(insiderThreat)
+    const hasAssetSpecificFields =
+        hasAssetIdentity(asset)
 
-    /*
-     * Asset row:
-     *
-     * Asset Name + Value/Criticality/Category/Internet Exposed
-     *
-     * A pure "name" alone is not enough here when the row clearly
-     * belongs to another dataset.
-     */
+    const hasVulnerabilitySpecificFields =
+        hasVulnerabilityIdentity(vulnerability)
+
+    const hasControlSpecificFields =
+        hasControlIdentity(control)
+
+    const hasInsiderSpecificFields =
+        hasInsiderIdentity(insiderThreat)
+
     if (
         hasValue(asset.name) &&
         (
@@ -684,17 +707,6 @@ export function mapMixedRow(
         result.assets = asset
     }
 
-    /*
-     * Vulnerability row:
-     *
-     * Vulnerability Name + CVSS / Exploit / Discovery
-     *
-     * OR vulnerability name + asset reference.
-     *
-     * Crucially, a control row with only:
-     * Security Control + Category + Cost + Risk Reduction
-     * cannot enter this branch.
-     */
     if (
         hasValue(vulnerability.name) &&
         (
@@ -705,11 +717,6 @@ export function mapMixedRow(
         result.vulnerabilities = vulnerability
     }
 
-    /*
-     * Control row:
-     *
-     * Security Control + Category / Cost / Risk Reduction
-     */
     if (
         hasValue(control.name) &&
         hasControlSpecificFields
@@ -717,11 +724,16 @@ export function mapMixedRow(
         result.controls = control
     }
 
-    /*
-     * Insider threat row.
-     */
     if (hasInsiderSpecificFields) {
         result.insiderThreat = insiderThreat
+    }
+
+    if (Object.keys(result).length === 0) {
+        const generic = mapGenericRow(row)
+
+        if (generic) {
+            result.generic = generic
+        }
     }
 
     return result
@@ -732,17 +744,24 @@ export function mapMixedRows(
 ): Partial<Record<DatasetType, RawImportRow>>[] {
     return rows
         .map((row) => mapMixedRow(row))
-        .filter((mapped) => Object.keys(mapped).length > 0)
+        .filter(
+            (mapped) =>
+                Object.keys(mapped).length > 0,
+        )
 }
 
 export function splitMixedRows(
     rows: RawImportRow[],
 ): Record<DatasetType, RawImportRow[]> {
-    const result: Record<DatasetType, RawImportRow[]> = {
+    const result: Record<
+        DatasetType,
+        RawImportRow[]
+    > = {
         assets: [],
         vulnerabilities: [],
         controls: [],
         insiderThreat: [],
+        generic: [],
     }
 
     for (const row of rows) {
@@ -751,7 +770,9 @@ export function splitMixedRows(
         for (const type of DATASET_TYPES) {
             const datasetRow = mapped[type]
 
-            if (!datasetRow) continue
+            if (!datasetRow) {
+                continue
+            }
 
             result[type].push(datasetRow)
         }

@@ -26,6 +26,7 @@ function isNonEmptyString(
         value.trim().length > 0
     )
 }
+
 function isFiniteNumber(
     value: unknown,
 ): value is number {
@@ -80,7 +81,8 @@ function addDuplicateErrors(
         if (seen.has(id)) {
             errors.push({
                 field: `${entity}.id`,
-                message: `Duplicate ${entity} ID "${id}".`,
+                message:
+                    `Duplicate ${entity} ID "${id}".`,
                 value: id,
             })
         }
@@ -106,36 +108,53 @@ export function validateAssets(
         if (!isNonEmptyString(asset.id)) {
             errors.push({
                 field: `assets.${index}.id`,
-                message: `Asset row ${row}: ID is required.`,
+                message:
+                    `Asset row ${row}: ID is required.`,
             })
         }
 
         if (!isNonEmptyString(asset.name)) {
             errors.push({
                 field: `assets.${index}.name`,
-                message: `Asset row ${row}: name is required.`,
+                message:
+                    `Asset row ${row}: name is required.`,
             })
         }
 
-        if (!isNonEmptyString(asset.category)) {
+        if (
+            !isNonEmptyString(
+                asset.category,
+            )
+        ) {
             errors.push({
                 field: `assets.${index}.category`,
-                message: `Asset row ${row}: category is required.`,
+                message:
+                    `Asset row ${row}: category is required.`,
             })
         }
 
-        if (!isNonNegativeNumber(asset.value)) {
+        if (
+            !isNonNegativeNumber(
+                asset.value,
+            )
+        ) {
             errors.push({
                 field: `assets.${index}.value`,
-                message: `Asset row ${row}: value must be a non-negative number.`,
+                message:
+                    `Asset row ${row}: value must be a non-negative number.`,
                 value: asset.value,
             })
         }
 
-        if (!isValidCriticality(asset.criticality)) {
+        if (
+            !isValidCriticality(
+                asset.criticality,
+            )
+        ) {
             errors.push({
                 field: `assets.${index}.criticality`,
-                message: `Asset row ${row}: invalid criticality.`,
+                message:
+                    `Asset row ${row}: invalid criticality.`,
                 value: asset.criticality,
             })
         }
@@ -145,9 +164,12 @@ export function validateAssets(
             'boolean'
         ) {
             errors.push({
-                field: `assets.${index}.internetExposed`,
-                message: `Asset row ${row}: internet exposure must be boolean.`,
-                value: asset.internetExposed,
+                field:
+                    `assets.${index}.internetExposed`,
+                message:
+                    `Asset row ${row}: internet exposure must be boolean.`,
+                value:
+                    asset.internetExposed,
             })
         }
     })
@@ -182,8 +204,10 @@ export function validateVulnerabilities(
                 )
             ) {
                 errors.push({
-                    field: `vulnerabilities.${index}.id`,
-                    message: `Vulnerability row ${row}: ID is required.`,
+                    field:
+                        `vulnerabilities.${index}.id`,
+                    message:
+                        `Vulnerability row ${row}: ID is required.`,
                 })
             }
 
@@ -193,26 +217,23 @@ export function validateVulnerabilities(
                 )
             ) {
                 errors.push({
-                    field: `vulnerabilities.${index}.name`,
-                    message: `Vulnerability row ${row}: name is required.`,
+                    field:
+                        `vulnerabilities.${index}.name`,
+                    message:
+                        `Vulnerability row ${row}: name is required.`,
                 })
             }
 
-            /*
-             * assetId is deliberately NOT required here.
-             *
-             * The resolver can create an asset automatically
-             * when the uploaded vulnerability references an
-             * asset that does not already exist.
-             */
             if (
                 !isNonEmptyString(
                     vulnerability.assetId,
                 )
             ) {
                 errors.push({
-                    field: `vulnerabilities.${index}.assetId`,
-                    message: `Vulnerability row ${row}: asset reference could not be resolved.`,
+                    field:
+                        `vulnerabilities.${index}.assetId`,
+                    message:
+                        `Vulnerability row ${row}: asset reference could not be resolved.`,
                 })
             }
 
@@ -224,9 +245,12 @@ export function validateVulnerabilities(
                 vulnerability.cvss > 10
             ) {
                 errors.push({
-                    field: `vulnerabilities.${index}.cvss`,
-                    message: `Vulnerability row ${row}: CVSS must be between 0 and 10.`,
-                    value: vulnerability.cvss,
+                    field:
+                        `vulnerabilities.${index}.cvss`,
+                    message:
+                        `Vulnerability row ${row}: CVSS must be between 0 and 10.`,
+                    value:
+                        vulnerability.cvss,
                 })
             }
 
@@ -235,8 +259,10 @@ export function validateVulnerabilities(
                 'boolean'
             ) {
                 errors.push({
-                    field: `vulnerabilities.${index}.exploitAvailable`,
-                    message: `Vulnerability row ${row}: exploit availability must be boolean.`,
+                    field:
+                        `vulnerabilities.${index}.exploitAvailable`,
+                    message:
+                        `Vulnerability row ${row}: exploit availability must be boolean.`,
                 })
             }
 
@@ -246,8 +272,10 @@ export function validateVulnerabilities(
                 )
             ) {
                 errors.push({
-                    field: `vulnerabilities.${index}.controlEffectiveness`,
-                    message: `Vulnerability row ${row}: control effectiveness must be between 0 and 1.`,
+                    field:
+                        `vulnerabilities.${index}.controlEffectiveness`,
+                    message:
+                        `Vulnerability row ${row}: control effectiveness must be between 0 and 1.`,
                     value:
                         vulnerability.controlEffectiveness,
                 })
@@ -263,8 +291,10 @@ export function validateVulnerabilities(
                 )
             ) {
                 errors.push({
-                    field: `vulnerabilities.${index}.discoveredOn`,
-                    message: `Vulnerability row ${row}: discovery date is invalid.`,
+                    field:
+                        `vulnerabilities.${index}.discoveredOn`,
+                    message:
+                        `Vulnerability row ${row}: discovery date is invalid.`,
                 })
             }
         },
@@ -282,7 +312,9 @@ export function validateControls(
     const errors: ValidationError[] = []
 
     addDuplicateErrors(
-        controls.map((control) => control.id),
+        controls.map(
+            (control) => control.id,
+        ),
         'controls',
         errors,
     )
@@ -293,28 +325,46 @@ export function validateControls(
         if (!isNonEmptyString(control.id)) {
             errors.push({
                 field: `controls.${index}.id`,
-                message: `Control row ${row}: ID is required.`,
+                message:
+                    `Control row ${row}: ID is required.`,
             })
         }
 
-        if (!isNonEmptyString(control.name)) {
+        if (
+            !isNonEmptyString(
+                control.name,
+            )
+        ) {
             errors.push({
                 field: `controls.${index}.name`,
-                message: `Control row ${row}: name is required.`,
+                message:
+                    `Control row ${row}: name is required.`,
             })
         }
 
-        if (!isNonEmptyString(control.category)) {
+        if (
+            !isNonEmptyString(
+                control.category,
+            )
+        ) {
             errors.push({
-                field: `controls.${index}.category`,
-                message: `Control row ${row}: category is required.`,
+                field:
+                    `controls.${index}.category`,
+                message:
+                    `Control row ${row}: category is required.`,
             })
         }
 
-        if (!isNonNegativeNumber(control.cost)) {
+        if (
+            !isNonNegativeNumber(
+                control.cost,
+            )
+        ) {
             errors.push({
-                field: `controls.${index}.cost`,
-                message: `Control row ${row}: cost must be a non-negative number.`,
+                field:
+                    `controls.${index}.cost`,
+                message:
+                    `Control row ${row}: cost must be a non-negative number.`,
                 value: control.cost,
             })
         }
@@ -325,8 +375,10 @@ export function validateControls(
             )
         ) {
             errors.push({
-                field: `controls.${index}.riskReductionPct`,
-                message: `Control row ${row}: risk reduction must be between 0 and 1.`,
+                field:
+                    `controls.${index}.riskReductionPct`,
+                message:
+                    `Control row ${row}: risk reduction must be between 0 and 1.`,
                 value:
                     control.riskReductionPct,
             })
@@ -345,7 +397,9 @@ export function validateInsiderThreats(
     const errors: ValidationError[] = []
 
     addDuplicateErrors(
-        events.map((event) => event.id),
+        events.map(
+            (event) => event.id,
+        ),
         'insiderThreat',
         errors,
     )
@@ -355,8 +409,10 @@ export function validateInsiderThreats(
 
         if (!isNonEmptyString(event.id)) {
             errors.push({
-                field: `insiderThreat.${index}.id`,
-                message: `Insider threat row ${row}: ID is required.`,
+                field:
+                    `insiderThreat.${index}.id`,
+                message:
+                    `Insider threat row ${row}: ID is required.`,
             })
         }
 
@@ -366,8 +422,10 @@ export function validateInsiderThreats(
             )
         ) {
             errors.push({
-                field: `insiderThreat.${index}.employeeDepartment`,
-                message: `Insider threat row ${row}: employee department is required.`,
+                field:
+                    `insiderThreat.${index}.employeeDepartment`,
+                message:
+                    `Insider threat row ${row}: employee department is required.`,
             })
         }
 
@@ -377,8 +435,10 @@ export function validateInsiderThreats(
             )
         ) {
             errors.push({
-                field: `insiderThreat.${index}.employeeCampus`,
-                message: `Insider threat row ${row}: employee campus is required.`,
+                field:
+                    `insiderThreat.${index}.employeeCampus`,
+                message:
+                    `Insider threat row ${row}: employee campus is required.`,
             })
         }
 
@@ -388,8 +448,10 @@ export function validateInsiderThreats(
             )
         ) {
             errors.push({
-                field: `insiderThreat.${index}.employeePosition`,
-                message: `Insider threat row ${row}: employee position is required.`,
+                field:
+                    `insiderThreat.${index}.employeePosition`,
+                message:
+                    `Insider threat row ${row}: employee position is required.`,
             })
         }
 
@@ -399,8 +461,10 @@ export function validateInsiderThreats(
             )
         ) {
             errors.push({
-                field: `insiderThreat.${index}.employeeSeniorityYears`,
-                message: `Insider threat row ${row}: seniority years must be non-negative.`,
+                field:
+                    `insiderThreat.${index}.employeeSeniorityYears`,
+                message:
+                    `Insider threat row ${row}: seniority years must be non-negative.`,
                 value:
                     event.employeeSeniorityYears,
             })
@@ -412,41 +476,44 @@ export function validateInsiderThreats(
                 string,
             ]
         > = [
-            [
-                'isContractor',
-                'isContractor',
-            ],
-            [
-                'hasForeignCitizenship',
-                'hasForeignCitizenship',
-            ],
-            [
-                'hasCriminalRecord',
-                'hasCriminalRecord',
-            ],
-            [
-                'hasMedicalHistory',
-                'hasMedicalHistory',
-            ],
-            [
-                'burnedFromOther',
-                'burnedFromOther',
-            ],
-            [
-                'isAbroad',
-                'isAbroad',
-            ],
-            [
-                'lateExitFlag',
-                'lateExitFlag',
-            ],
-            [
-                'entryDuringWeekend',
-                'entryDuringWeekend',
-            ],
-        ]
+                [
+                    'isContractor',
+                    'isContractor',
+                ],
+                [
+                    'hasForeignCitizenship',
+                    'hasForeignCitizenship',
+                ],
+                [
+                    'hasCriminalRecord',
+                    'hasCriminalRecord',
+                ],
+                [
+                    'hasMedicalHistory',
+                    'hasMedicalHistory',
+                ],
+                [
+                    'burnedFromOther',
+                    'burnedFromOther',
+                ],
+                [
+                    'isAbroad',
+                    'isAbroad',
+                ],
+                [
+                    'lateExitFlag',
+                    'lateExitFlag',
+                ],
+                [
+                    'entryDuringWeekend',
+                    'entryDuringWeekend',
+                ],
+            ]
 
-        for (const [field, label] of binaryFields) {
+        for (
+            const [field, label] of
+            binaryFields
+        ) {
             const value = event[field]
 
             if (
@@ -454,8 +521,10 @@ export function validateInsiderThreats(
                 value !== 1
             ) {
                 errors.push({
-                    field: `insiderThreat.${index}.${String(field)}`,
-                    message: `Insider threat row ${row}: ${label} must be 0 or 1.`,
+                    field:
+                        `insiderThreat.${index}.${String(field)}`,
+                    message:
+                        `Insider threat row ${row}: ${label} must be 0 or 1.`,
                     value,
                 })
             }
@@ -467,37 +536,40 @@ export function validateInsiderThreats(
                 string,
             ]
         > = [
-            [
-                'employeeClassification',
-                'employee classification',
-            ],
-            [
-                'hostilityCountryLevel',
-                'hostility country level',
-            ],
-            [
-                'numEntries',
-                'number of entries',
-            ],
-            [
-                'numUniqueCampus',
-                'unique campus count',
-            ],
-            [
-                'totalPrintedPages',
-                'total printed pages',
-            ],
-            [
-                'numPrintedPagesOffHours',
-                'off-hours printed pages',
-            ],
-            [
-                'totalFilesBurned',
-                'total files burned',
-            ],
-        ]
+                [
+                    'employeeClassification',
+                    'employee classification',
+                ],
+                [
+                    'hostilityCountryLevel',
+                    'hostility country level',
+                ],
+                [
+                    'numEntries',
+                    'number of entries',
+                ],
+                [
+                    'numUniqueCampus',
+                    'unique campus count',
+                ],
+                [
+                    'totalPrintedPages',
+                    'total printed pages',
+                ],
+                [
+                    'numPrintedPagesOffHours',
+                    'off-hours printed pages',
+                ],
+                [
+                    'totalFilesBurned',
+                    'total files burned',
+                ],
+            ]
 
-        for (const [field, label] of integerFields) {
+        for (
+            const [field, label] of
+            integerFields
+        ) {
             const value = event[field]
 
             if (
@@ -505,8 +577,10 @@ export function validateInsiderThreats(
                 Number(value) < 0
             ) {
                 errors.push({
-                    field: `insiderThreat.${index}.${String(field)}`,
-                    message: `Insider threat row ${row}: ${label} must be a non-negative integer.`,
+                    field:
+                        `insiderThreat.${index}.${String(field)}`,
+                    message:
+                        `Insider threat row ${row}: ${label} must be a non-negative integer.`,
                     value,
                 })
             }
@@ -519,8 +593,10 @@ export function validateInsiderThreats(
             )
         ) {
             errors.push({
-                field: `insiderThreat.${index}.tripDayNumber`,
-                message: `Insider threat row ${row}: trip day number must be non-negative.`,
+                field:
+                    `insiderThreat.${index}.tripDayNumber`,
+                message:
+                    `Insider threat row ${row}: trip day number must be non-negative.`,
                 value:
                     event.tripDayNumber,
             })
@@ -532,8 +608,10 @@ export function validateInsiderThreats(
             )
         ) {
             errors.push({
-                field: `insiderThreat.${index}.employeeOriginCountry`,
-                message: `Insider threat row ${row}: employee origin country is required.`,
+                field:
+                    `insiderThreat.${index}.employeeOriginCountry`,
+                message:
+                    `Insider threat row ${row}: employee origin country is required.`,
             })
         }
 
@@ -542,9 +620,66 @@ export function validateInsiderThreats(
             'boolean'
         ) {
             errors.push({
-                field: `insiderThreat.${index}.isMalicious`,
-                message: `Insider threat row ${row}: malicious flag must be boolean.`,
-                value: event.isMalicious,
+                field:
+                    `insiderThreat.${index}.isMalicious`,
+                message:
+                    `Insider threat row ${row}: malicious flag must be boolean.`,
+                value:
+                    event.isMalicious,
+            })
+        }
+    })
+
+    return {
+        valid: errors.length === 0,
+        errors,
+    }
+}
+
+export function validateGenericRows(
+    rows: RawImportRow[],
+): ValidationResult {
+    const errors: ValidationError[] = []
+
+    if (!Array.isArray(rows)) {
+        return {
+            valid: false,
+            errors: [
+                {
+                    field: 'generic',
+                    message:
+                        'Generic dataset must be an array.',
+                },
+            ],
+        }
+    }
+
+    if (rows.length === 0) {
+        return {
+            valid: false,
+            errors: [
+                {
+                    field: 'generic',
+                    message:
+                        'Generic dataset contains no records.',
+                },
+            ],
+        }
+    }
+
+    rows.forEach((row, index) => {
+        if (
+            !row ||
+            typeof row !== 'object' ||
+            Array.isArray(row)
+        ) {
+            errors.push({
+                field:
+                    `generic.${index}`,
+                message:
+                    `Generic row ${index + 1} must be a valid object.`,
+                row: index + 1,
+                value: row,
             })
         }
     })
@@ -561,6 +696,7 @@ export function validateImportData(
         vulnerabilities: NormalizedVulnerability[]
         controls: NormalizedControl[]
         insiderThreat: NormalizedInsiderThreat[]
+        generic?: RawImportRow[]
     },
 ): ValidationResult {
     const errors: ValidationError[] = []
@@ -574,7 +710,9 @@ export function validateImportData(
         )
 
     const controlResult =
-        validateControls(data.controls)
+        validateControls(
+            data.controls,
+        )
 
     const insiderThreatResult =
         validateInsiderThreats(
@@ -588,6 +726,17 @@ export function validateImportData(
         ...insiderThreatResult.errors,
     )
 
+    if (data.generic) {
+        const genericResult =
+            validateGenericRows(
+                data.generic,
+            )
+
+        errors.push(
+            ...genericResult.errors,
+        )
+    }
+
     return {
         valid: errors.length === 0,
         errors,
@@ -597,45 +746,7 @@ export function validateImportData(
 export function validateRawRows(
     rows: RawImportRow[],
 ): ValidationResult {
-    const errors: ValidationError[] = []
-
-    if (!Array.isArray(rows)) {
-        errors.push({
-            field: 'rows',
-            message: 'Import data must be an array.',
-        })
-
-        return {
-            valid: false,
-            errors,
-        }
-    }
-
-    if (rows.length === 0) {
-        errors.push({
-            field: 'rows',
-            message: 'The uploaded dataset is empty.',
-        })
-    }
-
-    rows.forEach((row, index) => {
-        if (
-            !row ||
-            typeof row !== 'object' ||
-            Array.isArray(row)
-        ) {
-            errors.push({
-                field: `rows.${index}`,
-                message: `Row ${index + 1} must be a valid object.`,
-                value: row,
-            })
-        }
-    })
-
-    return {
-        valid: errors.length === 0,
-        errors,
-    }
+    return validateGenericRows(rows)
 }
 
 export function limitValidationErrors(

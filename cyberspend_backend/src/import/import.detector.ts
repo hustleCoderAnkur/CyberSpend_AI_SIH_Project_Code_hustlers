@@ -5,7 +5,7 @@ import type {
 } from './import.types.js'
 
 type DetectionRule = {
-    type: DatasetType
+    type: Exclude<DatasetType, 'generic'>
     fields: string[]
     keywords: string[]
 }
@@ -149,9 +149,7 @@ const DETECTION_RULES: DetectionRule[] = [
     },
 ]
 
-function normalizeKey(
-    value: unknown,
-): string {
+function normalizeKey(value: unknown): string {
     return String(value ?? '')
         .trim()
         .toLowerCase()
@@ -161,17 +159,13 @@ function normalizeKey(
         .replace(/^_+|_+$/g, '')
 }
 
-function normalizeText(
-    value: unknown,
-): string {
+function normalizeText(value: unknown): string {
     return String(value ?? '')
         .trim()
         .toLowerCase()
 }
 
-function getKeys(
-    rows: RawImportRow[],
-): string[] {
+function getKeys(rows: RawImportRow[]): string[] {
     const keys = new Set<string>()
 
     for (const row of rows) {
@@ -183,9 +177,7 @@ function getKeys(
     return Array.from(keys)
 }
 
-function getValues(
-    rows: RawImportRow[],
-): unknown[] {
+function getValues(rows: RawImportRow[]): unknown[] {
     const values: unknown[] = []
 
     for (const row of rows.slice(0, 10)) {
@@ -220,7 +212,7 @@ function fieldMatches(
 }
 
 function valueMatchesType(
-    type: DatasetType,
+    type: Exclude<DatasetType, 'generic'>,
     values: unknown[],
 ): number {
     if (values.length === 0) {
@@ -307,10 +299,9 @@ function scoreRule(
 } {
     const keys = getKeys(rows)
 
-    const matchedFields =
-        keys.filter((key) =>
-            fieldMatches(key, rule),
-        )
+    const matchedFields = keys.filter(
+        (key) => fieldMatches(key, rule),
+    )
 
     if (matchedFields.length === 0) {
         return {
@@ -324,11 +315,10 @@ function scoreRule(
         matchedFields.length * 20,
     )
 
-    const valueScore =
-        valueMatchesType(
-            rule.type,
-            getValues(rows),
-        )
+    const valueScore = valueMatchesType(
+        rule.type,
+        getValues(rows),
+    )
 
     return {
         score: Math.min(
@@ -360,8 +350,7 @@ export function detectDatasetType(
             return {
                 type: rule.type,
                 score: result.score,
-                matchedFields:
-                    result.matchedFields,
+                matchedFields: result.matchedFields,
             }
         },
     )
@@ -374,7 +363,7 @@ export function detectDatasetType(
 
     if (!best || best.score < 20) {
         return {
-            type: null,
+            type: 'generic',
             confidence: 0,
             matchedFields: [],
         }
@@ -386,8 +375,7 @@ export function detectDatasetType(
             1,
             best.score / 100,
         ),
-        matchedFields:
-            best.matchedFields,
+        matchedFields: best.matchedFields,
     }
 }
 
@@ -411,13 +399,12 @@ export function detectDatasetTypes(
                     1,
                     result.score / 100,
                 ),
-                matchedFields:
-                    result.matchedFields,
+                matchedFields: result.matchedFields,
             }
         },
     )
 
-    return results
+    const detected = results
         .filter(
             (result) =>
                 result.confidence >= 0.2,
@@ -427,4 +414,16 @@ export function detectDatasetTypes(
                 b.confidence -
                 a.confidence,
         )
+
+    if (detected.length > 0) {
+        return detected
+    }
+
+    return [
+        {
+            type: 'generic',
+            confidence: 0,
+            matchedFields: [],
+        },
+    ]
 }

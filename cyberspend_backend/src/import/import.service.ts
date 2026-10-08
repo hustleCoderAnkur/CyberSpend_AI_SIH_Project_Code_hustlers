@@ -3,6 +3,7 @@ import { db } from '../db/index.js'
 import {
     assets,
     controls,
+    importedDatasets,
     insiderThreatEvents,
     vulnerabilities,
 } from '../db/schema.js'
@@ -13,6 +14,7 @@ import type {
     ImportServiceInput,
     NormalizedAsset,
     NormalizedControl,
+    NormalizedGenericDataset,
     NormalizedInsiderThreat,
     NormalizedVulnerability,
     RawImportRow,
@@ -41,6 +43,7 @@ import {
 import {
     validateAssets,
     validateControls,
+    validateGenericRows,
     validateInsiderThreats,
     validateVulnerabilities,
 } from './import.validation.js'
@@ -57,6 +60,7 @@ export interface ImportServiceResult {
         vulnerabilities: number
         controls: number
         insiderThreat: number
+        generic: number
         total: number
     }
 
@@ -87,6 +91,7 @@ interface PreparedImportData {
     vulnerabilities: NormalizedVulnerability[]
     controls: NormalizedControl[]
     insiderThreat: NormalizedInsiderThreat[]
+    generic: NormalizedGenericDataset[]
     createdAssets: number
 }
 
@@ -128,10 +133,15 @@ function normalizeInput(
             normalizeInsiderThreats(
                 insiderRows,
             ),
+
+        generic:
+            input.generic ?? [],
     }
 }
 
-async function getExistingAssets(): Promise<NormalizedAsset[]> {
+async function getExistingAssets(): Promise<
+    NormalizedAsset[]
+> {
     const rows = await db
         .select({
             id: assets.id,
@@ -153,6 +163,28 @@ async function getExistingAssets(): Promise<NormalizedAsset[]> {
         internetExposed:
             asset.internetExposed,
     }))
+}
+
+function validateGenericDatasets(
+    datasets: NormalizedGenericDataset[],
+): ImportServiceResult['errors'] {
+    const errors: ImportServiceResult['errors'] = []
+
+    datasets.forEach((dataset, datasetIndex) => {
+        const result = validateGenericRows(
+            dataset.rows,
+        )
+
+        for (const error of result.errors) {
+            errors.push({
+                ...error,
+                field:
+                    `generic.${datasetIndex}.${error.field}`,
+            })
+        }
+    })
+
+    return errors
 }
 
 async function prepareImportData(
@@ -181,7 +213,8 @@ async function prepareImportData(
             normalized.insiderThreat,
         )
 
-    const errors: ImportServiceResult['errors'] = []
+    const errors: ImportServiceResult['errors'] =
+        []
 
     const assetValidation =
         validateAssets(
@@ -210,6 +243,12 @@ async function prepareImportData(
         ...insiderValidation.errors,
     )
 
+    errors.push(
+        ...validateGenericDatasets(
+            normalized.generic,
+        ),
+    )
+
     if (errors.length > 0) {
         return {
             prepared: null,
@@ -225,43 +264,12 @@ async function prepareImportData(
      *
      * 1. Assets from the same upload
      * 2. Assets already present in the database
-     *
-     * Uploaded assets take priority over existing assets.
      */
     if (
         normalized.vulnerabilities.length > 0
     ) {
         const existingAssets =
             await getExistingAssets()
-
-        const assetMap =
-            new Map<string, NormalizedAsset>()
-
-        for (const asset of existingAssets) {
-            assetMap.set(
-                asset.id.toLowerCase(),
-                asset,
-            )
-
-            assetMap.set(
-                asset.name.toLowerCase(),
-                asset,
-            )
-        }
-
-        for (
-            const asset of normalized.assets
-        ) {
-            assetMap.set(
-                asset.id.toLowerCase(),
-                asset,
-            )
-
-            assetMap.set(
-                asset.name.toLowerCase(),
-                asset,
-            )
-        }
 
         const mergedAssets =
             new Map<string, NormalizedAsset>()
@@ -273,7 +281,13 @@ async function prepareImportData(
             )
         }
 
-        for (const asset of normalized.assets) {
+        /*
+         * Uploaded assets take priority over
+         * existing database assets.
+         */
+        for (
+            const asset of normalized.assets
+        ) {
             mergedAssets.set(
                 asset.id,
                 asset,
@@ -322,10 +336,10 @@ async function prepareImportData(
      * Return only:
      *
      * - uploaded assets
-     * - auto-created assets
+     * - automatically created assets
      *
-     * Existing DB assets should not be counted
-     * as newly imported assets.
+     * Existing DB assets are only used for
+     * vulnerability resolution.
      */
     const uploadedAssetIds =
         new Set(
@@ -359,6 +373,9 @@ async function prepareImportData(
             insiderThreat:
                 normalized.insiderThreat,
 
+            generic:
+                normalized.generic,
+
             createdAssets:
                 resolved.createdAssets,
         },
@@ -383,11 +400,20 @@ function createResult(
         insiderThreat:
             prepared.insiderThreat.length,
 
+        generic:
+            prepared.generic.length,
+
         total:
             prepared.assets.length +
             prepared.vulnerabilities.length +
             prepared.controls.length +
-            prepared.insiderThreat.length,
+            prepared.insiderThreat.length +
+            prepared.generic.reduce(
+                (total, dataset) =>
+                    total +
+                    dataset.rows.length,
+                0,
+            ),
     }
 
     return {
@@ -415,6 +441,7 @@ function emptyResult(
             vulnerabilities: 0,
             controls: 0,
             insiderThreat: 0,
+            generic: 0,
             total: 0,
         },
 
@@ -423,6 +450,57 @@ function emptyResult(
         },
 
         errors,
+    }
+}
+
+function createGenericDatasetId(): string {
+    return `GEN-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 10)}`
+}
+
+function getDatasetColumns(
+    rows: RawImportRow[],
+): string[] {
+    const columns = new Set<string>()
+
+    for (const row of rows) {
+        for (const key of Object.keys(row)) {
+            columns.add(key)
+        }
+    }
+
+    return Array.from(columns)
+}
+
+function buildGenericDataset(
+    dataset: NormalizedGenericDataset,
+): {
+    id: string
+    filename: string
+    format: 'csv' | 'json'
+    detectedType: string
+    columns: string[]
+    rowCount: number
+    data: Record<string, unknown>[]
+} {
+    return {
+        id: createGenericDatasetId(),
+        filename: dataset.filename,
+        format: dataset.format,
+        detectedType: 'generic',
+        columns:
+            dataset.columns.length > 0
+                ? dataset.columns
+                : getDatasetColumns(
+                    dataset.rows,
+                ),
+        rowCount:
+            dataset.rows.length,
+        data:
+            dataset.rows.map(
+                (row) => ({ ...row }),
+            ),
     }
 }
 
@@ -616,6 +694,22 @@ export async function importCompanyData(
                     },
                 })
         }
+
+        /*
+         * Generic datasets are stored as complete
+         * raw datasets. No columns or values are
+         * discarded.
+         */
+        if (prepared.generic.length > 0) {
+            const genericRows =
+                prepared.generic.map(
+                    buildGenericDataset,
+                )
+
+            await tx
+                .insert(importedDatasets)
+                .values(genericRows)
+        }
     })
 
     return createResult(prepared)
@@ -624,6 +718,8 @@ export async function importCompanyData(
 function rowsToImportInput(
     rows: RawImportRow[],
     type: DatasetType,
+    filename?: string,
+    format?: 'csv' | 'json',
 ): ImportServiceInput {
     const mappedRows =
         mapRowsToDataset(
@@ -653,14 +749,61 @@ function rowsToImportInput(
                 insiderThreat:
                     mappedRows,
             }
+
+        case 'generic': {
+            const genericRows =
+                mappedRows
+
+            return {
+                generic: [
+                    {
+                        filename:
+                            filename ??
+                            'uploaded-file',
+                        format:
+                            format ?? 'json',
+                        columns:
+                            getDatasetColumns(
+                                genericRows,
+                            ),
+                        rows:
+                            genericRows,
+                    },
+                ],
+            }
+        }
     }
 }
 
 function buildMixedImportInput(
     rows: RawImportRow[],
+    filename?: string,
+    format?: 'csv' | 'json',
 ): ImportServiceInput {
     const split =
         splitMixedRows(rows)
+
+    const genericRows =
+        split.generic
+
+    const generic: NormalizedGenericDataset[] =
+        genericRows.length > 0
+            ? [
+                {
+                    filename:
+                        filename ??
+                        'uploaded-file',
+                    format:
+                        format ?? 'json',
+                    columns:
+                        getDatasetColumns(
+                            genericRows,
+                        ),
+                    rows:
+                        genericRows,
+                },
+            ]
+            : []
 
     return {
         assets:
@@ -674,6 +817,16 @@ function buildMixedImportInput(
 
         insiderThreat:
             split.insiderThreat,
+
+        generic,
+    }
+}
+
+function emptyDetection(): DatasetDetectionResult {
+    return {
+        type: null,
+        confidence: 0,
+        matchedFields: [],
     }
 }
 
@@ -694,12 +847,8 @@ export async function validateRawFile(
             ...emptyResult(
                 parsed.errors,
             ),
-
-            detection: {
-                type: null,
-                confidence: 0,
-                matchedFields: [],
-            },
+            detection:
+                emptyDetection(),
         }
     }
 
@@ -709,25 +858,12 @@ export async function validateRawFile(
     const detection =
         detectDatasetType(rows)
 
-    if (!detection.type) {
-        return {
-            ...emptyResult([
-                {
-                    field: 'dataset',
-
-                    message:
-                        'Unable to determine the cybersecurity dataset type from the uploaded file.',
-                },
-            ]),
-
-            detection,
-        }
-    }
-
     const payload =
         rowsToImportInput(
             rows,
-            detection.type,
+            detection.type ?? 'generic',
+            input.filename,
+            parsed.data.format,
         )
 
     const result =
@@ -758,12 +894,8 @@ export async function importRawFile(
             ...emptyResult(
                 parsed.errors,
             ),
-
-            detection: {
-                type: null,
-                confidence: 0,
-                matchedFields: [],
-            },
+            detection:
+                emptyDetection(),
         }
     }
 
@@ -773,25 +905,12 @@ export async function importRawFile(
     const detection =
         detectDatasetType(rows)
 
-    if (!detection.type) {
-        return {
-            ...emptyResult([
-                {
-                    field: 'dataset',
-
-                    message:
-                        'Unable to determine the cybersecurity dataset type from the uploaded file.',
-                },
-            ]),
-
-            detection,
-        }
-    }
-
     const payload =
         rowsToImportInput(
             rows,
-            detection.type,
+            detection.type ?? 'generic',
+            input.filename,
+            parsed.data.format,
         )
 
     const result =
@@ -822,12 +941,8 @@ export async function validateMixedRawFile(
             ...emptyResult(
                 parsed.errors,
             ),
-
-            detection: {
-                type: null,
-                confidence: 0,
-                matchedFields: [],
-            },
+            detection:
+                emptyDetection(),
         }
     }
 
@@ -835,7 +950,8 @@ export async function validateMixedRawFile(
         parsed.data.rows
 
     /*
-     * Detection is only informational for mixed files.
+     * Detection is informational only for
+     * mixed files.
      *
      * It MUST NOT decide which dataset receives
      * the complete file.
@@ -844,7 +960,11 @@ export async function validateMixedRawFile(
         detectDatasetType(rows)
 
     const payload =
-        buildMixedImportInput(rows)
+        buildMixedImportInput(
+            rows,
+            input.filename,
+            parsed.data.format,
+        )
 
     const result =
         await validateCompanyData(
@@ -874,12 +994,8 @@ export async function importMixedRawFile(
             ...emptyResult(
                 parsed.errors,
             ),
-
-            detection: {
-                type: null,
-                confidence: 0,
-                matchedFields: [],
-            },
+            detection:
+                emptyDetection(),
         }
     }
 
@@ -896,7 +1012,11 @@ export async function importMixedRawFile(
         detectDatasetType(rows)
 
     const payload =
-        buildMixedImportInput(rows)
+        buildMixedImportInput(
+            rows,
+            input.filename,
+            parsed.data.format,
+        )
 
     const result =
         await importCompanyData(

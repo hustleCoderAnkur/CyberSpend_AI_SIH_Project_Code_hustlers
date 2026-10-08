@@ -6,6 +6,7 @@ import {
   timestamp,
   pgEnum,
   integer,
+  jsonb,
 } from 'drizzle-orm/pg-core'
 
 export const criticalityEnum = pgEnum(
@@ -26,7 +27,7 @@ export const assets = pgTable('assets', {
 
   category: text('category').notNull(),
 
-  value: real('value').notNull(), // INR
+  value: real('value').notNull(),
 
   criticality: criticalityEnum(
     'criticality',
@@ -74,7 +75,7 @@ export const vulnerabilities = pgTable(
       'control_effectiveness',
     )
       .notNull()
-      .default(0), // 0-1
+      .default(0),
 
     discoveredOn: timestamp(
       'discovered_on',
@@ -99,24 +100,17 @@ export const controls = pgTable(
 
     category: text('category').notNull(),
 
-    cost: real('cost').notNull(), // INR
+    cost: real('cost').notNull(),
 
     riskReductionPct: real(
       'risk_reduction_pct',
-    ).notNull(), // 0-1
+    ).notNull(),
   },
 )
 
 /*
 |--------------------------------------------------------------------------
 | Insider Threat Events
-|--------------------------------------------------------------------------
-|
-| This table stores the cleaned insider-threat dataset.
-|
-| isMalicious is the ground-truth label from the dataset.
-| It should NOT be used as an input feature during prediction.
-|
 |--------------------------------------------------------------------------
 */
 
@@ -221,6 +215,67 @@ export const insiderThreatEvents = pgTable(
   },
 )
 
+/*
+|--------------------------------------------------------------------------
+| Generic Imported Datasets
+|--------------------------------------------------------------------------
+|
+| This table accepts ANY valid CSV / JSON dataset.
+|
+| The dataset does NOT need to be:
+| - Asset
+| - Vulnerability
+| - Security Control
+| - Insider Threat
+|
+| Unknown datasets are preserved as raw JSON.
+|
+|--------------------------------------------------------------------------
+*/
+
+export const importedDatasets = pgTable(
+  'imported_datasets',
+  {
+    id: text('id').primaryKey(),
+
+    filename: text('filename').notNull(),
+
+    format: text('format').notNull(),
+
+    detectedType: text(
+      'detected_type',
+    ),
+
+    columns: jsonb('columns')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+
+    rowCount: integer(
+      'row_count',
+    )
+      .notNull()
+      .default(0),
+
+    data: jsonb('data')
+      .$type<Record<string, unknown>[]>()
+      .notNull()
+      .default([]),
+
+    createdAt: timestamp(
+      'created_at',
+    )
+      .defaultNow()
+      .notNull(),
+  },
+)
+
+/*
+|--------------------------------------------------------------------------
+| Types
+|--------------------------------------------------------------------------
+*/
+
 export type AssetRow =
   typeof assets.$inferSelect
 
@@ -244,3 +299,9 @@ export type InsiderThreatEventRow =
 
 export type NewInsiderThreatEventRow =
   typeof insiderThreatEvents.$inferInsert
+
+export type ImportedDatasetRow =
+  typeof importedDatasets.$inferSelect
+
+export type NewImportedDatasetRow =
+  typeof importedDatasets.$inferInsert

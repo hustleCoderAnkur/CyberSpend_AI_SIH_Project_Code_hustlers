@@ -66,7 +66,7 @@ function parseCsvLine(
             character === ',' &&
             !insideQuotes
         ) {
-            values.push(current.trim())
+            values.push(current)
             current = ''
             continue
         }
@@ -74,9 +74,71 @@ function parseCsvLine(
         current += character
     }
 
-    values.push(current.trim())
+    values.push(current)
 
-    return values
+    return values.map((value) =>
+        value.trim(),
+    )
+}
+
+function splitCsvRecords(
+    content: string,
+): string[] {
+    const records: string[] = []
+
+    let current = ''
+    let insideQuotes = false
+
+    for (
+        let index = 0;
+        index < content.length;
+        index += 1
+    ) {
+        const character = content[index]
+
+        if (character === '"') {
+            if (
+                insideQuotes &&
+                content[index + 1] === '"'
+            ) {
+                current += '""'
+                index += 1
+                continue
+            }
+
+            insideQuotes = !insideQuotes
+            current += character
+            continue
+        }
+
+        if (
+            (character === '\n' ||
+                character === '\r') &&
+            !insideQuotes
+        ) {
+            if (
+                character === '\r' &&
+                content[index + 1] === '\n'
+            ) {
+                index += 1
+            }
+
+            if (current.trim()) {
+                records.push(current)
+            }
+
+            current = ''
+            continue
+        }
+
+        current += character
+    }
+
+    if (current.trim()) {
+        records.push(current)
+    }
+
+    return records
 }
 
 function parseCsv(
@@ -84,8 +146,6 @@ function parseCsv(
 ): ParseResult {
     const cleaned = content
         .replace(/^\uFEFF/, '')
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
         .trim()
 
     if (!cleaned) {
@@ -102,14 +162,10 @@ function parseCsv(
         }
     }
 
-    const lines = cleaned
-        .split('\n')
-        .filter(
-            (line) =>
-                line.trim().length > 0,
-        )
+    const records =
+        splitCsvRecords(cleaned)
 
-    if (lines.length < 2) {
+    if (records.length < 2) {
         return {
             success: false,
             data: null,
@@ -124,7 +180,7 @@ function parseCsv(
     }
 
     const headers = parseCsvLine(
-        lines[0],
+        records[0],
     ).map(normalizeHeader)
 
     if (
@@ -176,12 +232,12 @@ function parseCsv(
     const rows: RawImportRow[] = []
 
     for (
-        let lineIndex = 1;
-        lineIndex < lines.length;
-        lineIndex += 1
+        let recordIndex = 1;
+        recordIndex < records.length;
+        recordIndex += 1
     ) {
         const values = parseCsvLine(
-            lines[lineIndex],
+            records[recordIndex],
         )
 
         const row: RawImportRow = {}
@@ -199,8 +255,7 @@ function parseCsv(
             }
 
             row[header] =
-                values[columnIndex] ??
-                ''
+                values[columnIndex] ?? ''
         }
 
         const hasData =
@@ -232,12 +287,10 @@ function parseCsv(
 
     return {
         success: true,
-
         data: {
             rows,
             format: 'csv',
         },
-
         errors: [],
     }
 }
@@ -347,12 +400,10 @@ function parseJson(
 
     return {
         success: true,
-
         data: {
             rows,
             format: 'json',
         },
-
         errors: [],
     }
 }
@@ -423,14 +474,10 @@ export function parseImportFile(
     }
 
     if (format === 'csv') {
-        return parseCsv(
-            content,
-        )
+        return parseCsv(content)
     }
 
-    return parseJson(
-        content,
-    )
+    return parseJson(content)
 }
 
 export function parseImportContent(
@@ -438,12 +485,8 @@ export function parseImportContent(
     format: 'csv' | 'json',
 ): ParseResult {
     if (format === 'csv') {
-        return parseCsv(
-            content,
-        )
+        return parseCsv(content)
     }
 
-    return parseJson(
-        content,
-    )
+    return parseJson(content)
 }

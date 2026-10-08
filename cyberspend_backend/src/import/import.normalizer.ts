@@ -451,7 +451,9 @@ function normalizeKey(value: unknown): string {
         .trim()
         .toLowerCase()
         .replace(/[\s\-./]+/g, '_')
+        .replace(/[^a-z0-9_]/g, '')
         .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '')
 }
 
 function getField(
@@ -461,10 +463,13 @@ function getField(
     const entries = Object.entries(row)
 
     for (const alias of aliases) {
-        const normalizedAlias = normalizeKey(alias)
+        const normalizedAlias =
+            normalizeKey(alias)
 
         const match = entries.find(
-            ([key]) => normalizeKey(key) === normalizedAlias,
+            ([key]) =>
+                normalizeKey(key) ===
+                normalizedAlias,
         )
 
         if (match) {
@@ -479,7 +484,10 @@ function getValue(
     row: RawImportRow,
     field: keyof typeof FIELD_ALIASES,
 ): unknown {
-    return getField(row, FIELD_ALIASES[field])
+    return getField(
+        row,
+        FIELD_ALIASES[field],
+    )
 }
 
 function toText(value: unknown): string {
@@ -488,7 +496,9 @@ function toText(value: unknown): string {
 
 function toNumber(value: unknown): number {
     if (typeof value === 'number') {
-        return Number.isFinite(value) ? value : 0
+        return Number.isFinite(value)
+            ? value
+            : 0
     }
 
     const normalized = String(value ?? '')
@@ -504,7 +514,9 @@ function toNumber(value: unknown): number {
 
     const parsed = Number(normalized)
 
-    return Number.isFinite(parsed) ? parsed : 0
+    return Number.isFinite(parsed)
+        ? parsed
+        : 0
 }
 
 function toInteger(value: unknown): number {
@@ -534,7 +546,9 @@ function toBinary(value: unknown): number {
     return toBoolean(value) ? 1 : 0
 }
 
-function toNullableNumber(value: unknown): number | null {
+function toNullableNumber(
+    value: unknown,
+): number | null {
     if (
         value === undefined ||
         value === null ||
@@ -545,7 +559,9 @@ function toNullableNumber(value: unknown): number | null {
 
     const parsed = toNumber(value)
 
-    return Number.isFinite(parsed) ? parsed : null
+    return Number.isFinite(parsed)
+        ? parsed
+        : null
 }
 
 function normalizePercentage(
@@ -554,7 +570,10 @@ function normalizePercentage(
     const raw = toNumber(value)
 
     if (raw <= 1) {
-        return Math.max(0, Math.min(1, raw))
+        return Math.max(
+            0,
+            Math.min(1, raw),
+        )
     }
 
     return Math.max(
@@ -633,25 +652,39 @@ export function normalizeAsset(
             generateId('AST', index),
 
         name:
-            toText(getValue(row, 'assetName')) ||
+            toText(
+                getValue(row, 'assetName'),
+            ) ||
             `Asset ${index + 1}`,
 
         category:
-            toText(getValue(row, 'category')) ||
+            toText(
+                getValue(row, 'category'),
+            ) ||
             'Uncategorized',
 
         value: Math.max(
             0,
-            toNumber(getValue(row, 'value')),
+            toNumber(
+                getValue(row, 'value'),
+            ),
         ),
 
-        criticality: normalizeCriticality(
-            getValue(row, 'criticality'),
-        ),
+        criticality:
+            normalizeCriticality(
+                getValue(
+                    row,
+                    'criticality',
+                ),
+            ),
 
-        internetExposed: toBoolean(
-            getValue(row, 'internetExposed'),
-        ),
+        internetExposed:
+            toBoolean(
+                getValue(
+                    row,
+                    'internetExposed',
+                ),
+            ),
     }
 }
 
@@ -663,7 +696,9 @@ export function normalizeVulnerability(
         0,
         Math.min(
             10,
-            toNumber(getValue(row, 'cvss')),
+            toNumber(
+                getValue(row, 'cvss'),
+            ),
         ),
     )
 
@@ -672,8 +707,9 @@ export function normalizeVulnerability(
             toText(getValue(row, 'id')) ||
             generateId('VUL', index),
 
-        assetId:
-            toText(getValue(row, 'assetId')),
+        assetId: toText(
+            getValue(row, 'assetId'),
+        ),
 
         name:
             toText(
@@ -686,9 +722,13 @@ export function normalizeVulnerability(
 
         cvss,
 
-        exploitAvailable: toBoolean(
-            getValue(row, 'exploitAvailable'),
-        ),
+        exploitAvailable:
+            toBoolean(
+                getValue(
+                    row,
+                    'exploitAvailable',
+                ),
+            ),
 
         controlEffectiveness:
             normalizePercentage(
@@ -698,9 +738,13 @@ export function normalizeVulnerability(
                 ),
             ),
 
-        discoveredOn: normalizeDate(
-            getValue(row, 'discoveredOn'),
-        ),
+        discoveredOn:
+            normalizeDate(
+                getValue(
+                    row,
+                    'discoveredOn',
+                ),
+            ),
     }
 }
 
@@ -715,7 +759,10 @@ export function normalizeControl(
 
         name:
             toText(
-                getValue(row, 'controlName'),
+                getValue(
+                    row,
+                    'controlName',
+                ),
             ) ||
             `Security Control ${index + 1}`,
 
@@ -730,7 +777,9 @@ export function normalizeControl(
 
         cost: Math.max(
             0,
-            toNumber(getValue(row, 'cost')),
+            toNumber(
+                getValue(row, 'cost'),
+            ),
         ),
 
         riskReductionPct:
@@ -785,7 +834,10 @@ export function normalizeInsiderThreat(
             ),
 
         isContractor: toBinary(
-            getValue(row, 'isContractor'),
+            getValue(
+                row,
+                'isContractor',
+            ),
         ),
 
         employeeClassification:
@@ -796,43 +848,48 @@ export function normalizeInsiderThreat(
                 ),
             ),
 
-        hasForeignCitizenship: toBinary(
-            getValue(
-                row,
-                'hasForeignCitizenship',
-            ),
-        ),
-
-        hasCriminalRecord: toBinary(
-            getValue(
-                row,
-                'hasCriminalRecord',
-            ),
-        ),
-
-        hasMedicalHistory: toBinary(
-            getValue(
-                row,
-                'hasMedicalHistory',
-            ),
-        ),
-
-        employeeOriginCountry: toText(
-            getValue(
-                row,
-                'employeeOriginCountry',
-            ),
-        ),
-
-        totalPrintedPages: Math.max(
-            0,
-            toInteger(
+        hasForeignCitizenship:
+            toBinary(
                 getValue(
                     row,
-                    'totalPrintedPages',
+                    'hasForeignCitizenship',
                 ),
             ),
-        ),
+
+        hasCriminalRecord:
+            toBinary(
+                getValue(
+                    row,
+                    'hasCriminalRecord',
+                ),
+            ),
+
+        hasMedicalHistory:
+            toBinary(
+                getValue(
+                    row,
+                    'hasMedicalHistory',
+                ),
+            ),
+
+        employeeOriginCountry:
+            toText(
+                getValue(
+                    row,
+                    'employeeOriginCountry',
+                ),
+            ),
+
+        totalPrintedPages:
+            Math.max(
+                0,
+                toInteger(
+                    getValue(
+                        row,
+                        'totalPrintedPages',
+                    ),
+                ),
+            ),
 
         numPrintedPagesOffHours:
             Math.max(
@@ -845,15 +902,16 @@ export function normalizeInsiderThreat(
                 ),
             ),
 
-        totalFilesBurned: Math.max(
-            0,
-            toInteger(
-                getValue(
-                    row,
-                    'totalFilesBurned',
+        totalFilesBurned:
+            Math.max(
+                0,
+                toInteger(
+                    getValue(
+                        row,
+                        'totalFilesBurned',
+                    ),
                 ),
             ),
-        ),
 
         burnedFromOther: toBinary(
             getValue(
@@ -863,15 +921,19 @@ export function normalizeInsiderThreat(
         ),
 
         isAbroad: toBinary(
-            getValue(row, 'isAbroad'),
-        ),
-
-        tripDayNumber: toNullableNumber(
             getValue(
                 row,
-                'tripDayNumber',
+                'isAbroad',
             ),
         ),
+
+        tripDayNumber:
+            toNullableNumber(
+                getValue(
+                    row,
+                    'tripDayNumber',
+                ),
+            ),
 
         hostilityCountryLevel:
             toInteger(
@@ -908,12 +970,13 @@ export function normalizeInsiderThreat(
             ),
         ),
 
-        entryDuringWeekend: toBinary(
-            getValue(
-                row,
-                'entryDuringWeekend',
+        entryDuringWeekend:
+            toBinary(
+                getValue(
+                    row,
+                    'entryDuringWeekend',
+                ),
             ),
-        ),
 
         isMalicious: toBoolean(
             getValue(
@@ -933,7 +996,9 @@ export function normalizeAssets(
 export function normalizeVulnerabilities(
     rows: RawImportRow[],
 ): NormalizedVulnerability[] {
-    return rows.map(normalizeVulnerability)
+    return rows.map(
+        normalizeVulnerability,
+    )
 }
 
 export function normalizeControls(

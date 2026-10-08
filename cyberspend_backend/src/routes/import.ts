@@ -82,6 +82,29 @@ function extractCompanyPayload(
         insiderThreatEvents: extractArray(
             source.insiderThreatEvents,
         ),
+
+        generic: extractArray(
+            source.generic,
+        ).length
+            ? [
+                {
+                    filename:
+                        typeof source.filename ===
+                            'string'
+                            ? source.filename
+                            : 'uploaded-file',
+                    format:
+                        source.format ===
+                            'csv'
+                            ? 'csv'
+                            : 'json',
+                    columns: [],
+                    rows: extractArray(
+                        source.generic,
+                    ),
+                },
+            ]
+            : undefined,
     }
 }
 
@@ -234,6 +257,9 @@ importRouter.post(
                 insiderThreatEvents:
                     result.imported.insiderThreat,
 
+                generic:
+                    result.imported.generic,
+
                 createdAssets:
                     result.created.assets,
 
@@ -335,6 +361,9 @@ importRouter.post(
                     insiderThreatEvents:
                         result.imported.insiderThreat,
 
+                    generic:
+                        result.imported.generic,
+
                     total:
                         result.imported.total,
                 },
@@ -396,7 +425,9 @@ importRouter.post(
             }
 
             const result =
-                await validateMixedRawFile(file)
+                await validateMixedRawFile(
+                    file,
+                )
 
             return res.json({
                 valid: result.success,
@@ -418,6 +449,9 @@ importRouter.post(
 
                 insiderThreatEvents:
                     result.imported.insiderThreat,
+
+                generic:
+                    result.imported.generic,
 
                 createdAssets:
                     result.created.assets,
@@ -475,7 +509,9 @@ importRouter.post(
             }
 
             const result =
-                await importMixedRawFile(file)
+                await importMixedRawFile(
+                    file,
+                )
 
             if (!result.success) {
                 return res.status(400).json({
@@ -520,6 +556,9 @@ importRouter.post(
                     insiderThreatEvents:
                         result.imported.insiderThreat,
 
+                    generic:
+                        result.imported.generic,
+
                     total:
                         result.imported.total,
                 },
@@ -561,7 +600,9 @@ importRouter.post(
                 extractCompanyPayload(req.body)
 
             const result =
-                await validateCompanyData(payload)
+                await validateCompanyData(
+                    payload,
+                )
 
             return res.json({
                 valid: result.success,
@@ -580,6 +621,9 @@ importRouter.post(
 
                 insiderThreatEvents:
                     result.imported.insiderThreat,
+
+                generic:
+                    result.imported.generic,
 
                 createdAssets:
                     result.created.assets,
@@ -618,7 +662,9 @@ importRouter.post(
                 extractCompanyPayload(req.body)
 
             const result =
-                await importCompanyData(payload)
+                await importCompanyData(
+                    payload,
+                )
 
             if (!result.success) {
                 return res.status(400).json({
@@ -656,6 +702,9 @@ importRouter.post(
 
                     insiderThreatEvents:
                         result.imported.insiderThreat,
+
+                    generic:
+                        result.imported.generic,
 
                     total:
                         result.imported.total,

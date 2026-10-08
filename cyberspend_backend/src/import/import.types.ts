@@ -3,6 +3,7 @@ export type DatasetType =
     | 'vulnerabilities'
     | 'controls'
     | 'insiderThreat'
+    | 'generic'
 
 export interface RawImportRow {
     [key: string]: unknown
@@ -13,7 +14,11 @@ export interface NormalizedAsset {
     name: string
     category: string
     value: number
-    criticality: 'Low' | 'Medium' | 'High' | 'Critical'
+    criticality:
+    | 'Low'
+    | 'Medium'
+    | 'High'
+    | 'Critical'
     internetExposed: boolean
 }
 
@@ -61,11 +66,19 @@ export interface NormalizedInsiderThreat {
     isMalicious: boolean
 }
 
+export interface NormalizedGenericDataset {
+    filename: string
+    format: 'csv' | 'json'
+    columns: string[]
+    rows: RawImportRow[]
+}
+
 export interface NormalizedImportData {
     assets: NormalizedAsset[]
     vulnerabilities: NormalizedVulnerability[]
     controls: NormalizedControl[]
     insiderThreat: NormalizedInsiderThreat[]
+    generic: NormalizedGenericDataset[]
 }
 
 export interface ImportError {
@@ -80,6 +93,7 @@ export interface ImportStats {
     vulnerabilities: number
     controls: number
     insiderThreat: number
+    generic: number
     total: number
 }
 
@@ -101,6 +115,7 @@ export interface ImportRequestPayload {
     controls?: RawImportRow[]
     insiderThreat?: RawImportRow[]
     insiderThreatEvents?: RawImportRow[]
+    generic?: RawImportRow[]
     data?: RawImportRow[]
     rows?: RawImportRow[]
     records?: RawImportRow[]
@@ -113,4 +128,5 @@ export interface ImportServiceInput {
     controls?: RawImportRow[]
     insiderThreat?: RawImportRow[]
     insiderThreatEvents?: RawImportRow[]
+    generic?: NormalizedGenericDataset[]
 }
