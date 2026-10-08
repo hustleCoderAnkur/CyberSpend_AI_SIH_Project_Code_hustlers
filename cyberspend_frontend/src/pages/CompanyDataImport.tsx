@@ -25,10 +25,14 @@ import {
 } from 'lucide-react'
 
 import { apiFetch } from '../api/client'
+import {
+    importMixedFile,
+    validateMixedImportFile,
+} from '../api/import'
 
 const IMPORT_STORAGE_KEY = 'cyberspend_import_completed'
 
-type DataType = 'assets' | 'vulnerabilities' | 'controls' | 'insiderThreat'
+type DataType = 'assets' | 'vulnerabilities' | 'controls' | 'insiderThreat' | 'generic'
 
 type Criticality = 'Low' | 'Medium' | 'High' | 'Critical'
 
@@ -99,11 +103,18 @@ type UploadedFile = {
     rows: RawRow[]
 }
 
+type Item = {
+    file?: string;
+    message: string;
+};
+
 type ImportStats = {
     assets: number
     vulnerabilities: number
     controls: number
     insiderThreatEvents: number
+    generic: number
+    total: number
 }
 
 type ProcessingStep =
@@ -139,9 +150,14 @@ const DATA_TYPES: Array<{
             label: 'Insider Threat Data',
             description: 'Employee activity and malicious insider indicators',
         },
+        {
+            value: 'generic',
+            label: 'Other Dataset',
+            description: 'Any other valid CSV or JSON dataset',
+        },
     ]
 
-const FIELD_ALIASES: Record<DataType, Record<string, string[]>> = {
+const FIELD_ALIASES: Record<Exclude<DataType, 'generic'>, Record<string, string[]>> = {
     assets: {
         id: ['id', 'asset_id', 'assetid'],
         name: ['name', 'asset_name', 'assetname', 'hostname', 'host'],
@@ -231,17 +247,17 @@ const PROCESSING_STEPS: Array<{
         {
             id: 'normalizing',
             label: 'Normalizing security data',
-            description: 'Mapping fields into the CyberSpend data model',
+            description: 'Mapping uploaded fields in the backend import module',
         },
         {
             id: 'validating',
             label: 'Validating records',
-            description: 'Checking fields and relationships locally',
+            description: 'Validating fields and relationships in the backend',
         },
         {
             id: 'saving',
             label: 'Saving security data',
-            description: 'Writing validated data to the security database',
+            description: 'Resolving and saving data through the backend import module',
         },
         {
             id: 'risk',
@@ -254,7 +270,7 @@ function normalizeKey(value: string): string {
     return value.trim().toLowerCase().replace(/[\s_-]+/g, '')
 }
 
-function getField(row: RawRow, type: DataType, field: string): unknown {
+function getField(row: RawRow, type: Exclude<DataType, 'generic'>, field: string): unknown {
     const aliases = FIELD_ALIASES[type][field] ?? []
 
     for (const [key, value] of Object.entries(row)) {
@@ -345,7 +361,7 @@ function normalizeDate(value: unknown): string {
     return Number.isNaN(date.getTime()) ? '' : date.toISOString()
 }
 
-function normalizeRows(rows: RawRow[], type: DataType): NormalizedRow[] {
+function normalizeRows(rows: RawRow[], type: Exclude<DataType, 'generic'>): NormalizedRow[] {
     if (type === 'assets') {
         return rows.map((row, index) => ({
             id: String(getField(row, type, 'id') || generateId('A', index)).trim(),
@@ -454,12 +470,12 @@ function normalizeRows(rows: RawRow[], type: DataType): NormalizedRow[] {
     }))
 }
 
-function detectDataType(rows: RawRow[]): DataType | null {
-    if (!rows.length) return null
+function detectDataType(rows: RawRow[]): DataType {
+    if (!rows.length) return 'generic'
 
     const keys = new Set(Object.keys(rows[0]).map(normalizeKey))
 
-    const has = (type: DataType, field: string): boolean =>
+    const has = (type: Exclude<DataType, 'generic'>, field: string): boolean =>
         (FIELD_ALIASES[type][field] ?? []).some((alias) =>
             keys.has(normalizeKey(alias)),
         )
@@ -484,7 +500,7 @@ function detectDataType(rows: RawRow[]): DataType | null {
         return 'assets'
     }
 
-    return null
+    return 'generic'
 }
 
 function parseCsv(text: string): RawRow[] {
@@ -564,29 +580,58 @@ async function parseDataFile(file: File): Promise<RawRow[]> {
         if (Array.isArray(parsed)) {
             return parsed.filter(
                 (item): item is RawRow =>
-                    typeof item === 'object' && item !== null && !Array.isArray(item),
+                    typeof item === 'object' &&
+                    item !== null &&
+                    !Array.isArray(item),
             )
         }
 
         if (
             typeof parsed === 'object' &&
             parsed !== null &&
-            'data' in parsed &&
-            Array.isArray((parsed as { data: unknown }).data)
+            !Array.isArray(parsed)
         ) {
-            return (parsed as { data: unknown[] }).data.filter(
-                (item): item is RawRow =>
-                    typeof item === 'object' && item !== null && !Array.isArray(item),
-            )
+            const record = parsed as Record<string, unknown>
+            const wrapperKeys = [
+                'data',
+                'rows',
+                'records',
+                'items',
+                'results',
+                'assets',
+                'vulnerabilities',
+                'controls',
+                'insiderThreat',
+                'insiderThreatEvents',
+            ]
+
+            for (const key of wrapperKeys) {
+                const candidate = record[key]
+
+                if (Array.isArray(candidate)) {
+                    const rows = candidate.filter(
+                        (item): item is RawRow =>
+                            typeof item === 'object' &&
+                            item !== null &&
+                            !Array.isArray(item),
+                    )
+
+                    if (rows.length > 0) {
+                        return rows
+                    }
+                }
+            }
+
+            return [record]
         }
 
-        throw new Error('JSON must contain an array of records or a data array.')
+        throw new Error('JSON must contain valid object records.')
     }
 
     return parseCsv(text)
 }
 
-function validateRows(rows: NormalizedRow[], type: DataType): string[] {
+function validateRows(rows: NormalizedRow[], type: Exclude<DataType, 'generic'>): string[] {
     const errors: string[] = []
     const ids = new Set<string>()
 
@@ -769,73 +814,6 @@ function validateRows(rows: NormalizedRow[], type: DataType): string[] {
     return errors
 }
 
-function buildCompanyPayload(files: UploadedFile[]) {
-    const payload: {
-        assets: NormalizedAsset[]
-        vulnerabilities: NormalizedVulnerability[]
-        controls: NormalizedControl[]
-    } = {
-        assets: [],
-        vulnerabilities: [],
-        controls: [],
-    }
-
-    files.forEach((item) => {
-        if (item.type === 'insiderThreat') return
-
-        const rows = normalizeRows(item.rows, item.type)
-
-        if (item.type === 'assets') {
-            payload.assets.push(...(rows as NormalizedAsset[]))
-        }
-
-        if (item.type === 'vulnerabilities') {
-            payload.vulnerabilities.push(...(rows as NormalizedVulnerability[]))
-        }
-
-        if (item.type === 'controls') {
-            payload.controls.push(...(rows as NormalizedControl[]))
-        }
-    })
-
-    return payload
-}
-
-function buildInsiderPayload(files: UploadedFile[]): NormalizedInsiderThreat[] {
-    const result: NormalizedInsiderThreat[] = []
-
-    files.forEach((item) => {
-        if (item.type !== 'insiderThreat') return
-
-        result.push(...(normalizeRows(item.rows, item.type) as NormalizedInsiderThreat[]))
-    })
-
-    return result
-}
-
-function validateRelationships(
-    payload: ReturnType<typeof buildCompanyPayload>,
-): string[] {
-    const errors: string[] = []
-
-    if (payload.vulnerabilities.length > 0 && payload.assets.length === 0) {
-        errors.push('Assets are required when vulnerability data is uploaded.')
-        return errors
-    }
-
-    const assetIds = new Set(payload.assets.map((asset) => asset.id))
-
-    payload.vulnerabilities.forEach((vulnerability, index) => {
-        if (!assetIds.has(vulnerability.assetId)) {
-            errors.push(
-                `Vulnerability row ${index + 2}: assetId "${vulnerability.assetId}" does not match an uploaded asset.`,
-            )
-        }
-    })
-
-    return errors
-}
-
 function stepState(
     step: ProcessingStep,
     current: ProcessingStep,
@@ -869,7 +847,8 @@ function DatasetIcon({ type }: { type: DataType }) {
     if (type === 'assets') return <Server size={18} />
     if (type === 'vulnerabilities') return <Bug size={18} />
     if (type === 'controls') return <ShieldCheck size={18} />
-    return <UserRoundSearch size={18} />
+    if (type === 'insiderThreat') return <UserRoundSearch size={18} />
+    return <Database size={18} />
 }
 
 function ProcessingIcon({
@@ -972,6 +951,8 @@ export default function CompanyDataImport() {
         vulnerabilities: 0,
         controls: 0,
         insiderThreatEvents: 0,
+        generic: 0,
+        total: 0,
     })
 
     const activeFile = uploadedFiles.find(
@@ -979,38 +960,18 @@ export default function CompanyDataImport() {
     )
 
     const activeRows = useMemo(
-        () => (activeFile ? normalizeRows(activeFile.rows, activeFile.type) : []),
+        () => {
+            if (!activeFile) return []
+            if (activeFile.type === 'generic') return activeFile.rows
+            return normalizeRows(activeFile.rows, activeFile.type)
+        },
         [activeFile],
     )
 
-    const companyPayload = useMemo(
-        () => buildCompanyPayload(uploadedFiles),
-        [uploadedFiles],
+    const totalRecords = uploadedFiles.reduce(
+        (total, item) => total + item.rows.length,
+        0,
     )
-
-    const insiderPayload = useMemo(
-        () => buildInsiderPayload(uploadedFiles),
-        [uploadedFiles],
-    )
-
-    const relationshipErrors = useMemo(
-        () => validateRelationships(companyPayload),
-        [companyPayload],
-    )
-
-    const allLocalErrors = useMemo(() => {
-        const errors = uploadedFiles.flatMap((item) =>
-            validateRows(normalizeRows(item.rows, item.type), item.type),
-        )
-
-        return [...errors, ...relationshipErrors]
-    }, [uploadedFiles, relationshipErrors])
-
-    const totalRecords =
-        companyPayload.assets.length +
-        companyPayload.vulnerabilities.length +
-        companyPayload.controls.length +
-        insiderPayload.length
 
     async function handleFile(file: File) {
         const name = file.name.toLowerCase()
@@ -1031,12 +992,6 @@ export default function CompanyDataImport() {
             }
 
             const detectedType = detectDataType(rows)
-
-            if (!detectedType) {
-                throw new Error(
-                    'Could not identify this dataset. Use Asset, Vulnerability, Control or Insider Threat fields.',
-                )
-            }
 
             const uploaded: UploadedFile = {
                 file,
@@ -1099,15 +1054,6 @@ export default function CompanyDataImport() {
             return
         }
 
-        if (allLocalErrors.length > 0) {
-            setValidationErrors(allLocalErrors.slice(0, 20))
-            setError(
-                `Please fix ${allLocalErrors.length} validation issue${allLocalErrors.length === 1 ? '' : 's'
-                } before importing.`,
-            )
-            return
-        }
-
         setProcessing(true)
         setCompleted(false)
         setError('')
@@ -1118,111 +1064,117 @@ export default function CompanyDataImport() {
             await new Promise((resolve) => setTimeout(resolve, 150))
 
             setProcessingStep('normalizing')
-            const company = buildCompanyPayload(uploadedFiles)
-            const insider = buildInsiderPayload(uploadedFiles)
             await new Promise((resolve) => setTimeout(resolve, 150))
 
             setProcessingStep('validating')
 
-            const relationshipIssues = validateRelationships(company)
+            const validationResults = []
 
-            if (relationshipIssues.length > 0) {
-                setValidationErrors(relationshipIssues)
-                setError('The uploaded datasets have relationship errors.')
-                return
+            for (const item of uploadedFiles) {
+                const content = await item.file.text()
+
+                const result = await validateMixedImportFile(
+                    item.file.name,
+                    content,
+                )
+
+                validationResults.push({
+                    file: item.file.name,
+                    result,
+                })
+
+                if (!result.valid) {
+                    const backendErrors =
+                        Array.isArray(result.errors)
+                            ? result.errors.map((item) => {
+                                if (
+                                    typeof item === 'object' &&
+                                    item !== null &&
+                                    'message' in item &&
+                                    typeof item.message === 'string'
+                                ) {
+                                    const error = item as Item;
+
+                                    return error.file
+                                        ? `${error.file}: ${error.message}`
+                                        : error.message;
+                                }
+
+                                return String(item);
+                            })
+                            : [];
+
+                    setValidationErrors(
+                        backendErrors.length > 0
+                            ? backendErrors.slice(0, 20)
+                            : [`${item.file.name}: backend validation failed.`],
+                    );
+
+                    setError(
+                        `The backend rejected ${item.file.name}. Please fix the reported validation issues.`,
+                    );
+
+                    return;
+                }
             }
 
             await new Promise((resolve) => setTimeout(resolve, 150))
             setProcessingStep('saving')
 
-            let companyImported: ImportStats = {
+            const importedStats: ImportStats = {
                 assets: 0,
                 vulnerabilities: 0,
                 controls: 0,
                 insiderThreatEvents: 0,
+                generic: 0,
+                total: 0
             }
 
-            if (
-                company.assets.length > 0 ||
-                company.vulnerabilities.length > 0 ||
-                company.controls.length > 0
-            ) {
-                const result = await apiFetch<{
-                    success: boolean
-                    message?: string
-                    error?: unknown
-                    imported?: {
-                        assets: number
-                        vulnerabilities: number
-                        controls: number
-                        total: number
-                    }
-                }>('/api/import', {
-                    method: 'POST',
-                    body: JSON.stringify(company),
-                })
+            for (const item of uploadedFiles) {
+                const content = await item.file.text()
+
+                const result = await importMixedFile(
+                    item.file.name,
+                    content,
+                )
 
                 if (!result.success) {
                     throw new Error(
                         result.message ||
-                        'The backend could not complete the company data import.',
+                        `The backend could not complete the import for ${item.file.name}.`,
                     )
                 }
 
-                companyImported = {
-                    ...companyImported,
-                    ...result.imported,
+                if (result.imported) {
+                    importedStats.assets += result.imported.assets ?? 0
+                    importedStats.vulnerabilities +=
+                        result.imported.vulnerabilities ?? 0
+                    importedStats.controls += result.imported.controls ?? 0
+                    importedStats.insiderThreatEvents +=
+                        result.imported.insiderThreatEvents ?? 0
+                    importedStats.generic +=
+                        result.imported.generic ?? 0
                 }
             }
 
-            if (insider.length > 0) {
-                const result = await apiFetch<{
-                    success: boolean
-                    message?: string
-                    error?: unknown
-                    imported?: {
-                        insiderThreatEvents: number
-                        total: number
-                    }
-                }>('/api/import/insider-threat', {
-                    method: 'POST',
-                    body: JSON.stringify(insider),
-                })
+            setImportStats(importedStats)
 
-                if (!result.success) {
-                    throw new Error(
-                        result.message ||
-                        'The backend could not complete the insider threat import.',
-                    )
-                }
+            setProcessingStep('risk')
 
-                companyImported.insiderThreatEvents =
-                    result.imported?.insiderThreatEvents ?? insider.length
-            }
-
-            setImportStats(companyImported)
-
-            if (
-                company.assets.length > 0 ||
-                company.vulnerabilities.length > 0 ||
-                company.controls.length > 0
-            ) {
-                setProcessingStep('risk')
-
-                try {
-                    await apiFetch('/api/risk')
-                } catch (riskError) {
-                    console.warn(
-                        'Risk refresh failed after import:',
-                        riskError,
-                    )
-                }
+            try {
+                await apiFetch('/api/risk')
+            } catch (riskError) {
+                console.warn(
+                    'Risk refresh failed after import:',
+                    riskError,
+                )
             }
 
             setProcessingStep('done')
             await new Promise((resolve) => setTimeout(resolve, 350))
 
             localStorage.setItem(IMPORT_STORAGE_KEY, 'true')
+            window.dispatchEvent(new Event('cyberspend-import-completed'))
             setCompleted(true)
         } catch (err) {
             console.error('Import failed:', err)
@@ -1236,6 +1188,7 @@ export default function CompanyDataImport() {
             setProcessing(false)
         }
     }
+
 
     if (processing) {
         return (
@@ -1366,7 +1319,7 @@ export default function CompanyDataImport() {
                             Your uploaded data has been validated and imported successfully.
                         </p>
 
-                        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+                        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                             <SummaryCard
                                 icon={<Server size={17} />}
                                 value={importStats.assets}
@@ -1386,6 +1339,11 @@ export default function CompanyDataImport() {
                                 icon={<UserRoundSearch size={17} />}
                                 value={importStats.insiderThreatEvents}
                                 label="Insider Events"
+                            />
+                            <SummaryCard
+                                icon={<Database size={17} />}
+                                value={importStats.generic}
+                                label="Other Records"
                             />
                         </div>
 
@@ -1412,9 +1370,10 @@ export default function CompanyDataImport() {
         (item) => item.value === activeType,
     )
 
-    const activeValidationErrors = activeFile
-        ? validateRows(activeRows, activeFile.type)
-        : []
+    const activeValidationErrors =
+        activeFile && activeFile.type !== 'generic'
+            ? validateRows(activeRows as NormalizedRow[], activeFile.type)
+            : []
 
     return (
         <div
@@ -1455,14 +1414,95 @@ export default function CompanyDataImport() {
                             className="mt-2 max-w-2xl text-sm"
                             style={{ color: 'var(--text-secondary)' }}
                         >
-                            Upload your organization&apos;s security datasets to unlock the
-                            CyberSpend risk analysis platform.
+                            Upload any valid CSV or JSON dataset. Known cybersecurity fields are
+                            automatically detected and structured; unknown datasets are preserved as raw data.
                         </p>
                     </div>
                 </header>
 
+                <section
+                    className="rounded-xl border p-5 md:p-6"
+                    style={{
+                        borderColor: 'var(--border-hairline)',
+                        background: 'var(--bg-surface)',
+                    }}
+                >
+                    <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck
+                                size={17}
+                                style={{ color: 'var(--text-secondary)' }}
+                            />
+                            <h2
+                                className="text-sm font-semibold"
+                                style={{ color: 'var(--text-primary)' }}
+                            >
+                                What data can I upload?
+                            </h2>
+                        </div>
+
+                        <p
+                            className="text-xs leading-relaxed"
+                            style={{ color: 'var(--text-secondary)' }}
+                        >
+                            Any valid CSV or JSON dataset can be uploaded. The categories below are
+                            examples of datasets that CyberSpend AI can recognize and analyze.
+                        </p>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                        {DATA_TYPES.map((item) => (
+                            <div
+                                key={`supported-${item.value}`}
+                                className="border p-3"
+                                style={{
+                                    borderColor: 'var(--border-hairline-soft)',
+                                    background: 'var(--bg-base)',
+                                }}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div
+                                        className="flex h-7 w-7 shrink-0 items-center justify-center"
+                                        style={{
+                                            background: 'var(--bg-surface)',
+                                            color: 'var(--text-secondary)',
+                                        }}
+                                    >
+                                        <DatasetIcon type={item.value} />
+                                    </div>
+                                    <p
+                                        className="text-xs font-semibold"
+                                        style={{ color: 'var(--text-primary)' }}
+                                    >
+                                        {item.label}
+                                    </p>
+                                </div>
+
+                                <p
+                                    className="mt-2 text-[11px] leading-relaxed"
+                                    style={{ color: 'var(--text-tertiary)' }}
+                                >
+                                    {item.description}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div
+                        className="mt-4 grid gap-2 border-t pt-4 text-[11px] md:grid-cols-3"
+                        style={{
+                            borderColor: 'var(--border-hairline-soft)',
+                            color: 'var(--text-tertiary)',
+                        }}
+                    >
+                        <p><span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>Formats:</span> CSV, JSON</p>
+                        <p><span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>Field names:</span> Common variations are recognized</p>
+                        <p><span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>Unknown data:</span> Preserved without rejection</p>
+                    </div>
+                </section>
+
                 <section>
-                    <div className="mb-3 flex items-center justify-between">
+                    <div className="mt-10 mb-3 flex items-center justify-between">
                         <h2
                             className="text-sm font-semibold"
                             style={{ color: 'var(--text-primary)' }}
@@ -1474,11 +1514,11 @@ export default function CompanyDataImport() {
                             className="text-xs"
                             style={{ color: 'var(--text-tertiary)' }}
                         >
-                            {uploadedFiles.length} / 4 uploaded
+                            {uploadedFiles.length} file{uploadedFiles.length === 1 ? '' : 's'} uploaded
                         </span>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                         {DATA_TYPES.map((item) => {
                             const selected = activeType === item.value
                             const uploaded = uploadedFiles.some(
@@ -1568,9 +1608,22 @@ export default function CompanyDataImport() {
                             className="mt-1 text-sm"
                             style={{ color: 'var(--text-tertiary)' }}
                         >
-                            CSV and JSON files are supported. Dataset type is detected
-                            automatically from its fields.
+                            CSV and JSON files are supported. The backend import module detects known
+                            security data and preserves any unknown dataset as raw data.
                         </p>
+
+                        {activeType === 'generic' && (
+                            <div
+                                className="mt-3 rounded-lg border px-3 py-2.5 text-xs"
+                                style={{
+                                    borderColor: 'var(--border-hairline-soft)',
+                                    background: 'var(--bg-base)',
+                                    color: 'var(--text-secondary)',
+                                }}
+                            >
+                                This dataset was not matched to a known CyberSpend category. It will be preserved and stored as raw data without being rejected.
+                            </div>
+                        )}
 
                         {activeType === 'insiderThreat' && (
                             <div
@@ -1930,8 +1983,7 @@ export default function CompanyDataImport() {
                         onClick={() => void importData()}
                         disabled={
                             processing ||
-                            uploadedFiles.length === 0 ||
-                            allLocalErrors.length > 0
+                            uploadedFiles.length === 0
                         }
                         className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
                         style={{

@@ -37,15 +37,8 @@ export function updateAsset(
     })
 }
 
-export async function deleteAsset(id: string) {
-    const response = await fetch(
-        `${import.meta.env.API_URL}/api/assets/${id}`,
-        {
-            method: 'DELETE',
-        },
-    )
-
-    if (!response.ok) {
-        throw new Error('Failed to delete asset')
-    }
+export function deleteAsset(id: string) {
+    return apiFetch<void>(`/api/assets/${id}`, {
+        method: 'DELETE',
+    })
 }

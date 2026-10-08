@@ -31,15 +31,8 @@ export function updateControl(
     })
 }
 
-export async function deleteControl(id: string) {
-    const response = await fetch(
-        `${import.meta.env.API_URL}/api/controls/${id}`,
-        {
-            method: 'DELETE',
-        },
-    )
-
-    if (!response.ok) {
-        throw new Error('Failed to delete control')
-    }
+export function deleteControl(id: string) {
+    return apiFetch<void>(`/api/controls/${id}`, {
+        method: 'DELETE',
+    })
 }

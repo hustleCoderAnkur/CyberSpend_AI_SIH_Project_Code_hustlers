@@ -6,18 +6,44 @@ import {
   Routes,
 } from 'react-router-dom'
 
-import WhatIf from './pages/WhatIf'
 import Sidebar from './components/Sidebar'
-import RiskAnalysis from './pages/RiskAnalysis'
+import CompanyDataImport from './pages/CompanyDataImport'
 import Dashboard from './pages/Dashboard'
 import Assets from './pages/assets'
 import Vulnerabilities from './pages/Vulnerabilities'
 import Controls from './pages/controls'
+import RiskAnalysis from './pages/RiskAnalysis'
 import Optimizer from './pages/Optimizer'
+import WhatIf from './pages/WhatIf'
 import Compliance from './pages/Compliance'
-import CompanyDataImport from './pages/CompanyDataImport'
 
 const IMPORT_STORAGE_KEY = 'cyberspend_import_completed'
+
+function LoadingScreen() {
+  return (
+    <div
+      className="flex min-h-screen items-center justify-center"
+      style={{
+        background: 'var(--bg-base)',
+        color: 'var(--text-secondary)',
+      }}
+    >
+      <div className="text-center">
+        <div
+          className="mx-auto mb-4 h-6 w-6 animate-spin rounded-full border-2"
+          style={{
+            borderColor: 'var(--border-hairline)',
+            borderTopColor: 'var(--text-primary)',
+          }}
+        />
+
+        <p className="text-sm font-semibold uppercase tracking-wider">
+          Loading
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function ProtectedRoute({
   children,
@@ -28,34 +54,48 @@ function ProtectedRoute({
   const [importCompleted, setImportCompleted] = useState(false)
 
   useEffect(() => {
-    const completed =
-      localStorage.getItem(IMPORT_STORAGE_KEY) === 'true'
+    const checkImportStatus = () => {
+      const completed =
+        localStorage.getItem(IMPORT_STORAGE_KEY) === 'true'
 
-    setImportCompleted(completed)
-    setChecking(false)
+      setImportCompleted(completed)
+      setChecking(false)
+    }
+
+    checkImportStatus()
+
+    window.addEventListener(
+      'cyberspend-import-completed',
+      checkImportStatus,
+    )
+
+    window.addEventListener(
+      'storage',
+      checkImportStatus,
+    )
+
+    return () => {
+      window.removeEventListener(
+        'cyberspend-import-completed',
+        checkImportStatus,
+      )
+
+      window.removeEventListener(
+        'storage',
+        checkImportStatus,
+      )
+    }
   }, [])
 
   if (checking) {
-    return (
-      <div
-        className="flex min-h-screen items-center justify-center"
-        style={{
-          background: 'var(--bg-base)',
-          color: 'var(--text-secondary)',
-        }}
-      >
-        <span className="text-sm font-semibold uppercase tracking-wider">
-          Loading...
-        </span>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   if (!importCompleted) {
     return <Navigate to="/" replace />
   }
 
-  return children
+  return <>{children}</>
 }
 
 function ApplicationLayout() {
@@ -68,7 +108,12 @@ function ApplicationLayout() {
     >
       <Sidebar />
 
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main
+        className="min-w-0 flex-1 overflow-y-auto"
+        style={{
+          background: 'var(--bg-base)',
+        }}
+      >
         <Routes>
           <Route
             path="/dashboard"
@@ -144,7 +189,12 @@ function ApplicationLayout() {
 
           <Route
             path="*"
-            element={<Navigate to="/dashboard" replace />}
+            element={
+              <Navigate
+                to="/dashboard"
+                replace
+              />
+            }
           />
         </Routes>
       </main>
@@ -156,13 +206,11 @@ export default function App() {
   return (
     <HashRouter>
       <Routes>
-        {/* Import is the entry point and does not require access */}
         <Route
           path="/"
           element={<CompanyDataImport />}
         />
 
-        {/* Everything else goes through the application layout */}
         <Route
           path="*"
           element={<ApplicationLayout />}

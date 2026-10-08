@@ -240,7 +240,7 @@ export default function Assets() {
             className="min-h-screen"
             style={{ background: 'var(--bg-base)' }}
         >
-            <div className="mx-auto w-full max-w-[1500px] px-5 py-6 sm:px-7 lg:px-10 lg:py-8">
+            <div className="mx-auto w-full max-w-375 px-5 py-6 sm:px-7 lg:px-10 lg:py-8">
                 {/* Page header */}
                 <header className="mb-7 border-b-2 pb-6" style={{ borderColor: 'var(--border-strong)' }}>
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -536,7 +536,7 @@ export default function Assets() {
                                         className="peer sr-only"
                                     />
                                     <span
-                                        className="h-6 w-11 border-2 border-black bg-white transition-colors peer-checked:bg-black peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2"
+                                        className="h-6 w-11 border-2 border-black bg-white transition-colors peer-checked:bg-black peer-focus-visible:outline-2 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2"
                                     >
                                         <span className="block h-5 w-5 border-r-2 border-black bg-white transition-transform peer-checked:translate-x-5 peer-checked:border-l-2 peer-checked:border-r-0" />
                                     </span>
@@ -683,7 +683,7 @@ export default function Assets() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[900px] text-left">
+                                    <table className="w-full min-w-225 text-left">
                                 <thead
                                     style={{
                                         background: 'var(--bg-base)',

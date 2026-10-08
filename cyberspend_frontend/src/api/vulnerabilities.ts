@@ -38,15 +38,8 @@ export function updateVulnerability(
     )
 }
 
-export async function deleteVulnerability(id: string) {
-    const response = await fetch(
-        `${import.meta.env.API_URL}/api/vulnerabilities/${id}`,
-        {
-            method: 'DELETE',
-        },
-    )
-
-    if (!response.ok) {
-        throw new Error('Failed to delete vulnerability')
-    }
+export function deleteVulnerability(id: string) {
+    return apiFetch<void>(`/api/vulnerabilities/${id}`, {
+        method: 'DELETE',
+    })
 }

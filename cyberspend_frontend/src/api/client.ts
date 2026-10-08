@@ -4,30 +4,31 @@ export async function apiFetch<T>(
     endpoint: string,
     options?: RequestInit,
 ): Promise<T> {
-    const response = await fetch(
-        `${API_URL}${endpoint}`,
-        {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options?.headers,
-            },
+    const response = await fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options?.headers,
         },
-    )
+    })
 
     if (!response.ok) {
         let message = `API request failed: ${response.status} ${response.statusText}`
 
         try {
-            const errorData = await response.json()
+            const errorData: unknown = await response.json()
 
             if (
-                errorData &&
+                typeof errorData === 'object' &&
+                errorData !== null &&
+                'message' in errorData &&
                 typeof errorData.message === 'string'
             ) {
                 message = errorData.message
             } else if (
-                errorData &&
+                typeof errorData === 'object' &&
+                errorData !== null &&
+                'error' in errorData &&
                 typeof errorData.error === 'string'
             ) {
                 message = errorData.error
@@ -43,5 +44,11 @@ export async function apiFetch<T>(
         return undefined as T
     }
 
-    return response.json()
+    const contentType = response.headers.get('content-type') ?? ''
+
+    if (!contentType.includes('application/json')) {
+        return undefined as T
+    }
+
+    return response.json() as Promise<T>
 }
